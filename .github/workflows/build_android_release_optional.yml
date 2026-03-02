@@ -6,7 +6,6 @@ on:
 jobs:
   build-android-release:
     runs-on: ubuntu-latest
-    if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +36,8 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      # bootstrap_flutter_project.sh now runs flutter gen-l10n (fix for
+      # "undefined getter AppLocalizations" compile error).
       - name: Bootstrap Flutter project
         run: |
           cd scripts
@@ -44,8 +45,7 @@ jobs:
           ./bootstrap_flutter_project.sh ../production_report_app ../frontend_template
 
       # FIX: heredoc rewritten without leading indentation so Gradle can parse
-      # key.properties correctly. The previous version wrote leading whitespace
-      # into every line of the file, which silently broke release signing.
+      # key.properties correctly. Variables are expanded via the shell (not EOF).
       - name: Create keystore and key.properties
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -55,22 +55,28 @@ jobs:
         run: |
           cd production_report_app/android
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > upload-keystore.jks
-          # NOTE: No indentation inside the heredoc — property values must start at column 0.
-          cat > key.properties << 'EOF'
-          storePassword=$ANDROID_KEYSTORE_PASSWORD
-          keyPassword=$ANDROID_KEY_PASSWORD
-          keyAlias=$ANDROID_KEY_ALIAS
-          storeFile=upload-keystore.jks
-          EOF
-          # Re-write using envsubst so the variable values are expanded correctly.
-          envsubst < key.properties > key.properties.tmp && mv key.properties.tmp key.properties
+          # No leading indentation — property values must start at column 0.
+          cat > key.properties << EOF
+storePassword=${ANDROID_KEYSTORE_PASSWORD}
+keyPassword=${ANDROID_KEY_PASSWORD}
+keyAlias=${ANDROID_KEY_ALIAS}
+storeFile=upload-keystore.jks
+EOF
 
       - name: Patch signing config if needed
         run: |
           APP_GRADLE=production_report_app/android/app/build.gradle
           if [ -f "$APP_GRADLE" ] && ! grep -q "key.properties" "$APP_GRADLE"; then
-            echo "⚠️  build.gradle does not reference key.properties — release signing may fail."
-            echo "    Add the key.properties wiring block to android/app/build.gradle."
+            echo "WARNING: build.gradle does not reference key.properties"
+            echo "         Release signing may fail."
+            echo "         Add the key.properties wiring block to android/app/build.gradle."
+          fi
+
+      - name: Check required secrets
+        run: |
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "ERROR: ANDROID_KEYSTORE_BASE64 secret is not set. Skipping release build."
+            exit 1
           fi
 
       - name: Build signed APK and AAB

@@ -12,5 +12,10 @@ popd >/dev/null
 cp -R "$TEMPLATE_PATH"/. "$PROJECT_PATH"/
 pushd "$PROJECT_PATH" >/dev/null
 flutter pub get
+# Generate localisation files (AppLocalizations) required by all screens.
+# 'generate: true' in pubspec.yaml is not always honoured in CI without
+# running this explicitly, causing "undefined getter AppLocalizations"
+# compilation errors on both Android and Windows targets.
+flutter gen-l10n
 popd >/dev/null
 echo "Ready."

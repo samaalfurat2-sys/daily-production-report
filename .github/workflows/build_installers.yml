@@ -39,6 +39,8 @@ jobs:
       - name: Enable Windows desktop
         run: flutter config --enable-windows-desktop
 
+      # bootstrap_flutter_project.ps1 now runs flutter gen-l10n (fix for
+      # "undefined getter AppLocalizations" compile error on Windows).
       - name: Bootstrap Flutter project
         run: |
           Set-Location scripts
@@ -103,6 +105,8 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      # bootstrap_flutter_project.sh now runs flutter gen-l10n (fix for
+      # "undefined getter AppLocalizations" compile error on Android).
       - name: Bootstrap Flutter project
         run: |
           cd scripts
