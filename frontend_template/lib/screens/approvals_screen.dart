@@ -27,7 +27,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final appState = context.read<AppState>();
-      _items = await appState.db.listShifts(status: 'Submitted', limit: 200);
+      _items = await appState.db.listShifts(status: 'submitted', limit: 200);
     } catch (e) {
       _error = e.toString();
     } finally {
