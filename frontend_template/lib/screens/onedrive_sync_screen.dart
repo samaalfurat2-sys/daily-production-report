@@ -17,7 +17,8 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
   String? _msUser;
 
   // Device-code auth flow state
-  String _userCode = '';
+  String _userCode = '';          // human-readable code shown to user
+  String _deviceCode = '';        // actual device_code sent to poll API  ← FIX
   String _verificationUri = '';
   bool _authInProgress = false;
 
@@ -35,7 +36,7 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
         final me = await app.graph.getMe();
         final files = await app.graph.listFiles('ProductionReports/db');
         if (mounted) setState(() {
-          _msUser = me['userPrincipalName'] ?? me['displayName'] ?? '';
+          _msUser = me['userPrincipalName'] ?? me['displayName'] ?? me['mail'] ?? '';
           _files = files;
         });
       }
@@ -53,6 +54,7 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
       final info = await app.connectOneDrive();
       if (mounted) setState(() {
         _userCode = info['user_code'] ?? '';
+        _deviceCode = info['device_code'] ?? '';          // ← store device_code separately
         _verificationUri = info['verification_uri'] ?? 'https://microsoft.com/devicelogin';
         _authInProgress = true;
         _loading = false;
@@ -66,13 +68,13 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final app = context.read<AppState>();
-      final ok = await app.pollOneDriveConnection(_userCode);
+      final ok = await app.pollOneDriveConnection(_deviceCode);  // ← pass device_code not user_code
       if (mounted) {
         if (ok) {
           setState(() { _authInProgress = false; });
           await _checkStatus();
         } else {
-          setState(() { _error = 'Not confirmed yet. Try again.'; _loading = false; });
+          setState(() { _error = 'Not confirmed yet. Try again after entering the code.'; _loading = false; });
         }
       }
     } catch (e) {
@@ -101,7 +103,7 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
   Future<void> _disconnect() async {
     final app = context.read<AppState>();
     await app.disconnectOneDrive();
-    if (mounted) setState(() { _msUser = null; _files = []; });
+    if (mounted) setState(() { _msUser = null; _files = []; _authInProgress = false; _deviceCode = ''; _userCode = ''; });
   }
 
   @override
@@ -134,7 +136,7 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
                           size: 36,
                         ),
                         title: Text(connected ? (ar ? 'متصل' : 'Connected') : (ar ? 'غير متصل' : 'Not Connected')),
-                        subtitle: _msUser != null ? Text(_msUser!) : null,
+                        subtitle: _msUser != null && _msUser!.isNotEmpty ? Text(_msUser!) : null,
                         trailing: connected
                             ? IconButton(icon: const Icon(Icons.link_off, color: Colors.red), onPressed: _disconnect)
                             : null,
@@ -154,12 +156,30 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
                     // Not connected: show connect button or device-code flow
                     if (!connected) ...[
                       if (!_authInProgress) ...[
+                        // Info text for personal account
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline, color: Colors.blue),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(
+                                ar
+                                  ? 'سيتم ربط OneDrive الشخصي (Outlook / Hotmail / Live). استخدم حساب Microsoft الشخصي فقط.'
+                                  : 'Connects to your personal OneDrive (Outlook / Hotmail / Live). Use your personal Microsoft account only.',
+                                style: const TextStyle(color: Colors.blue, fontSize: 13),
+                              )),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0078D4), foregroundColor: Colors.white),
                             icon: const Icon(Icons.cloud_sync),
-                            label: Text(ar ? 'ربط OneDrive' : 'Connect OneDrive'),
+                            label: Text(ar ? 'ربط OneDrive الشخصي' : 'Connect Personal OneDrive'),
                             onPressed: _startAuth,
                           ),
                         ),
@@ -170,14 +190,22 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(ar ? 'الخطوة 1: افتح هذا الرابط:' : 'Step 1: Open this URL:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Text(ar ? 'الخطوة 1: افتح هذا الرابط في المتصفح:' : 'Step 1: Open this URL in your browser:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
                                 SelectableText(_verificationUri, style: const TextStyle(color: Color(0xFF0078D4))),
                                 const SizedBox(height: 12),
-                                Text(ar ? 'الخطوة 2: أدخل هذا الكود:' : 'Step 2: Enter this code:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Text(ar ? 'الخطوة 2: أدخل هذا الكود وسجّل دخولك بحساب Microsoft الشخصي:' : 'Step 2: Enter this code and sign in with your personal Microsoft account:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 8),
                                 Container(
-                                  padding: const EdgeInsets.all(12),
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-                                  child: SelectableText(_userCode, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 4)),
+                                  child: Center(child: SelectableText(_userCode, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 6))),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  ar ? '⚠️ أدخل الكود في الموقع أعلاه باستخدام حساب Outlook/Hotmail/Live الشخصي فقط.' : '⚠️ Enter the code on the website above using your personal Outlook/Hotmail/Live account only.',
+                                  style: TextStyle(color: Colors.orange.shade800, fontSize: 12),
                                 ),
                                 const SizedBox(height: 16),
                                 Row(
@@ -186,14 +214,14 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
                                       child: ElevatedButton.icon(
                                         style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                                         icon: const Icon(Icons.check),
-                                        label: Text(ar ? '✅ تم' : '✅ Done'),
+                                        label: Text(ar ? '✅ تم تسجيل الدخول' : '✅ I\'ve signed in'),
                                         onPressed: _pollAuth,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: OutlinedButton(
-                                        onPressed: () => setState(() => _authInProgress = false),
+                                        onPressed: () => setState(() { _authInProgress = false; _deviceCode = ''; _userCode = ''; }),
                                         child: Text(ar ? 'إلغاء' : 'Cancel'),
                                       ),
                                     ),
@@ -220,7 +248,7 @@ class _OneDriveSyncScreenState extends State<OneDriveSyncScreen> {
                       const SizedBox(height: 24),
 
                       // Files list
-                      Text(ar ? 'الملفات في OneDrive' : 'Files in OneDrive',
+                      Text(ar ? 'الملفات في OneDrive الشخصي' : 'Files in Personal OneDrive',
                           style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 8),
                       if (_files.isEmpty)

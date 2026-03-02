@@ -5,9 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class GraphClient {
   static const _clientId = 'd3590ed6-52b3-4102-aeff-aad2292ab01c';
   static const _scope = 'Files.ReadWrite offline_access User.Read';
-  static const _tenantId = 'common';
-  static const _deviceCodeUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/devicecode';
-  static const _tokenUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+  static const _tenantId = 'consumers';
+  static const _deviceCodeUrl = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode';
+  static const _tokenUrl = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token';
   static const _graphBaseUrl = 'https://graph.microsoft.com/v1.0';
   static const _keyRefreshToken = 'ms_refresh_token';
   static const _keyAccessToken = 'ms_access_token';
