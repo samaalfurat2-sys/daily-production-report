@@ -69,7 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onPressed: _loading ? null : () async {
                           setState(() => _loading = true);
                           try {
-                            final shift = await appState.api.createShift(reportDate: dateText, shiftCode: _shiftCode.text.trim());
+                            final shift = await appState.db.createShift(reportDate: dateText, shiftCode: _shiftCode.text.trim());
                             if (!mounted) return;
                             Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShiftDetailScreen(shiftId: shift['id'].toString())));
                           } finally {
