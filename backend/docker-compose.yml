@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: prod_report
+      POSTGRES_USER: prod_user
+      # FIX: Use an env var or Docker secret — never hardcode passwords in compose files.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_in_production}
+    ports:
+      - "5432:5432"
+    volumes:
+      - prod_db_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg2://prod_user:${DB_PASSWORD:-change_in_production}@db:5432/prod_report
+      # FIX: Generate with:  python -c "import secrets; print(secrets.token_hex(32))"
+      JWT_SECRET: ${JWT_SECRET:-change_this_in_production}
+      JWT_EXPIRE_MINUTES: "${JWT_EXPIRE_MINUTES:-720}"
+      SHIFT_ORDER: "${SHIFT_ORDER:-A,B,C}"
+      # FIX: Restrict to your actual frontend URL in production — never use '*'.
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:8000}"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  prod_db_data:
