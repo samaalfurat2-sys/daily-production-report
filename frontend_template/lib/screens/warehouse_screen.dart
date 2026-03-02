@@ -183,7 +183,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> with SingleTickerProv
               if (qty <= 0) return;
               final now = DateTime.now();
               final dateText = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-              await context.read<AppState>().api.createInventoryTransaction(
+              await context.read<AppState>().db.createInventoryTransaction(
                 warehouseCode: _warehouseCode,
                 itemCode: _itemCode,
                 txnType: _txnType,
