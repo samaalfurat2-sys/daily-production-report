@@ -1,0 +1,34 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'railway.json'
+      - 'nixpacks.toml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Backend to Railway
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          echo "$HOME/.railway/bin" >> $GITHUB_PATH
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service backend --detach
+
+      - name: Print deployment URL
+        run: |
+          echo "✅ Deployed to Railway!"
+          echo "Check your Railway dashboard for the live URL."
+          echo "Set ONEDRIVE_REFRESH_TOKEN env var in Railway after first-time OneDrive auth."

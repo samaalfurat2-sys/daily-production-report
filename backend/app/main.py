@@ -9,6 +9,7 @@ from app.routers.auth import router as auth_router
 from app.routers.users import router as users_router
 from app.routers.shifts import router as shifts_router
 from app.routers.warehouses import router as warehouses_router
+from app.routers.onedrive_sync import router as onedrive_router
 from app.scripts.create_admin import ensure_roles_and_units, ensure_warehouses_and_items
 from app import models  # noqa: F401 – ensure models are imported so Base sees them
 
@@ -28,7 +29,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Daily Production Report API",
-    version="2.1.0",
+    version="2.2.0",
     lifespan=lifespan,
 )
 
@@ -43,10 +44,11 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"ok": True, "app": "daily-production-report-api"}
+    return {"ok": True, "app": "daily-production-report-api", "version": "2.2.0"}
 
 
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(shifts_router)
 app.include_router(warehouses_router)
+app.include_router(onedrive_router)

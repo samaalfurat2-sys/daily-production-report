@@ -65,5 +65,14 @@
   "item": "الصنف",
   "quantity": "الكمية",
   "transactionType": "نوع الحركة",
-  "noPendingApprovals": "لا توجد موافقات معلقة"
+  "noPendingApprovals": "لا توجد موافقات معلقة",
+  "oneDrive": "ون درايف",
+  "oneDriveSync": "مزامنة ون درايف",
+  "connectOneDrive": "ربط ون درايف",
+  "syncAll": "مزامنة الكل",
+  "exportShifts": "تصدير الورديات",
+  "exportInventory": "تصدير المخزون",
+  "backupDatabase": "نسخة احتياطية",
+  "connected": "متصل",
+  "notConnected": "غير متصل"
 }

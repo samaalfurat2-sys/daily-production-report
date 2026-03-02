@@ -65,5 +65,14 @@
   "item": "Item",
   "quantity": "Quantity",
   "transactionType": "Transaction type",
-  "noPendingApprovals": "No pending approvals"
+  "noPendingApprovals": "No pending approvals",
+  "oneDrive": "OneDrive",
+  "oneDriveSync": "OneDrive Sync",
+  "connectOneDrive": "Connect OneDrive",
+  "syncAll": "Sync All",
+  "exportShifts": "Export Shifts",
+  "exportInventory": "Export Inventory",
+  "backupDatabase": "Backup Database",
+  "connected": "Connected",
+  "notConnected": "Not Connected"
 }

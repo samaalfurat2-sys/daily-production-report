@@ -144,4 +144,29 @@ class ApiClient {
     if (res.statusCode != 200) throw Exception('Failed to create inventory transaction: ${res.body}');
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
+
+  // ── Generic helpers for OneDrive and other endpoints ────────────────────────
+
+  /// Generic GET — returns decoded JSON (Map or List)
+  Future<dynamic> get(String path, [Map<String, dynamic>? query]) async {
+    final res = await http.get(_u(path, query), headers: _headers());
+    if (res.statusCode != 200) {
+      throw Exception('GET $path failed: \${res.statusCode} \${res.body}');
+    }
+    return jsonDecode(res.body);
+  }
+
+  /// Generic POST — sends JSON body, returns decoded JSON
+  Future<dynamic> post(String path, Map<String, dynamic> body) async {
+    final res = await http.post(
+      _u(path),
+      headers: {..._headers(), 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception('POST $path failed: \${res.statusCode} \${res.body}');
+    }
+    return jsonDecode(res.body);
+  }
+
 }

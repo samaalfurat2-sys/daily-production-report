@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
-from typing import List
+from typing import List, Optional
 
 
 class Settings(BaseSettings):
@@ -12,6 +12,18 @@ class Settings(BaseSettings):
     shift_order: str = Field(default="A,B,C", alias="SHIFT_ORDER")
     cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
     seed_demo: bool = Field(default=True, alias="SEED_DEMO")
+
+    # ── Microsoft OneDrive / Graph API ──────────────────────────────────────
+    onedrive_client_id: str = Field(
+        default="d3590ed6-52b3-4102-aeff-aad2292ab01c",
+        alias="ONEDRIVE_CLIENT_ID",
+    )
+    onedrive_refresh_token: Optional[str] = Field(
+        default=None, alias="ONEDRIVE_REFRESH_TOKEN"
+    )
+    onedrive_folder: str = Field(
+        default="ProductionReports", alias="ONEDRIVE_FOLDER"
+    )
 
     def shift_order_list(self) -> List[str]:
         return [s.strip() for s in self.shift_order.split(",") if s.strip()]
