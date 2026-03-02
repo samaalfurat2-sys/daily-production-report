@@ -46,7 +46,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
     setState(() { _loading = true; _error = null; });
     try {
       final appState = context.read<AppState>();
-      final data = await appState.api.getShift(widget.shiftId);
+      final data = await appState.db.getShift(widget.shiftId);
       _shift = data;
       _bindControllersFromShift();
     } catch (e) {
@@ -190,7 +190,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
         };
       }
 
-      final updated = await appState.api.updateUnit(widget.shiftId, unit, payload);
+      final updated = await appState.db.updateUnit(widget.shiftId, unit, payload);
       setState(() {
         _shift = updated;
       });
@@ -208,7 +208,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
     final appState = context.read<AppState>();
     final t = AppLocalizations.of(context)!;
     try {
-      final updated = await appState.api.submitShift(widget.shiftId);
+      final updated = await appState.db.submitShift(widget.shiftId);
       setState(() => _shift = updated);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.submit)));
@@ -222,7 +222,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
     final appState = context.read<AppState>();
     final t = AppLocalizations.of(context)!;
     try {
-      final updated = await appState.api.approveShift(widget.shiftId);
+      final updated = await appState.db.approveShift(widget.shiftId);
       setState(() => _shift = updated);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.approve)));
@@ -236,7 +236,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
     final appState = context.read<AppState>();
     final t = AppLocalizations.of(context)!;
     try {
-      final updated = await appState.api.lockShift(widget.shiftId);
+      final updated = await appState.db.lockShift(widget.shiftId);
       setState(() => _shift = updated);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.lock)));
