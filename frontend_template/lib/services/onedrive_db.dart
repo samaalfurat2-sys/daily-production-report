@@ -27,13 +27,16 @@ class OneDriveDb {
   ];
 
   Map _inv() => {
-    'warehouses': [{'code':'RAW','name':'Raw Materials'},{'code':'FG','name':'Finished Goods'}],
+    'warehouses': [
+      {'code':'RAW','name':'Raw Materials','name_ar':'المواد الخام','name_en':'Raw Materials'},
+      {'code':'FG','name':'Finished Goods','name_ar':'البضاعة الجاهزة','name_en':'Finished Goods'},
+    ],
     'items': [
-      {'code':'PREFORM','name':'Preforms','warehouse_code':'RAW','stock':0.0},
-      {'code':'CAP','name':'Caps','warehouse_code':'RAW','stock':0.0},
-      {'code':'LABEL','name':'Labels','warehouse_code':'RAW','stock':0.0},
-      {'code':'SHRINK','name':'Shrink Film','warehouse_code':'RAW','stock':0.0},
-      {'code':'WATER','name':'Bottled Water','warehouse_code':'FG','stock':0.0},
+      {'code':'PREFORM','name':'Preforms','name_en':'Preforms','name_ar':'بريفورم','warehouse_code':'RAW','stock':0.0},
+      {'code':'CAP','name':'Caps','name_en':'Caps','name_ar':'أغطية','warehouse_code':'RAW','stock':0.0},
+      {'code':'LABEL','name':'Labels','name_en':'Labels','name_ar':'لاصقات','warehouse_code':'RAW','stock':0.0},
+      {'code':'SHRINK','name':'Shrink Film','name_en':'Shrink Film','name_ar':'فيلم تقليص','warehouse_code':'RAW','stock':0.0},
+      {'code':'WATER','name':'Bottled Water','name_en':'Bottled Water','name_ar':'مياه معبأة','warehouse_code':'FG','stock':0.0},
     ],
     'transactions': [],
   };
@@ -57,6 +60,8 @@ class OneDriveDb {
     s.sort((a,b) => ((b as Map)['report_date']??'').compareTo((a as Map)['report_date']??''));
     return s.take(limit).toList();
   }
+
+  Future<List> listShifts({String? status, int limit=100}) => getShifts(status: status, limit: limit);
 
   Future<Map<String,dynamic>> getShift(String id) async {
     final s = await graph.readJsonFile('$_db/shifts.json') as List;
@@ -88,8 +93,42 @@ class OneDriveDb {
 
   Future<List> getPendingApprovals() => getShifts(status:'submitted');
 
-  Future<List> listWarehouses() async => ((await graph.readJsonFile('$_db/inventory.json') as Map)['warehouses']) as List;
-  Future<List> listItems() async => ((await graph.readJsonFile('$_db/inventory.json') as Map)['items']) as List;
+  Future<List> listWarehouses() async {
+    final inv = await graph.readJsonFile('$_db/inventory.json') as Map;
+    return (inv['warehouses'] as List? ?? []);
+  }
+
+  Future<List> listItems() async {
+    final inv = await graph.readJsonFile('$_db/inventory.json') as Map;
+    return (inv['items'] as List? ?? []);
+  }
+
+  Future<List> listStock() async {
+    final inv = await graph.readJsonFile('$_db/inventory.json') as Map<String,dynamic>;
+    final items = (inv['items'] as List? ?? []).cast<Map<String,dynamic>>();
+    return items.map((item) => <String,dynamic>{
+      'warehouse_code': item['warehouse_code'] ?? '',
+      'item_code': item['code'] ?? '',
+      'item_name_en': item['name_en'] ?? item['name'] ?? '',
+      'item_name_ar': item['name_ar'] ?? item['name'] ?? '',
+      'qty_on_hand': (item['stock'] as num?)?.toDouble() ?? 0.0,
+      'uom': 'pcs',
+    }).toList();
+  }
+
+  Future<List> listTransactions() async {
+    final inv = await graph.readJsonFile('$_db/inventory.json') as Map<String,dynamic>;
+    final txns = (inv['transactions'] as List? ?? []).cast<Map<String,dynamic>>();
+    final items = (inv['items'] as List? ?? []).cast<Map<String,dynamic>>();
+    return txns.map((txn) {
+      final item = items.firstWhere((i) => i['code'] == txn['item_code'], orElse: () => <String,dynamic>{});
+      return <String,dynamic>{
+        ...txn,
+        'item_name_en': item['name_en'] ?? item['name'] ?? txn['item_code'] ?? '',
+        'item_name_ar': item['name_ar'] ?? item['name'] ?? txn['item_code'] ?? '',
+      };
+    }).toList();
+  }
 
   Future<Map<String,dynamic>> createTransaction({required String warehouseCode, required String itemCode, required String txnType, required double qty, required String txnDate, String? note}) async {
     final inv = await graph.readJsonFile('$_db/inventory.json') as Map<String,dynamic>;

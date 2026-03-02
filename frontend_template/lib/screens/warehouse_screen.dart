@@ -42,12 +42,12 @@ class _WarehouseScreenState extends State<WarehouseScreen> with SingleTickerProv
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final api = context.read<AppState>().api;
+      final db = context.read<AppState>().db;
       final results = await Future.wait([
-        api.listWarehouses(),
-        api.listStock(),
-        api.listTransactions(),
-        api.listItems(),
+        db.listWarehouses(),
+        db.listStock(),
+        db.listTransactions(),
+        db.listItems(),
       ]);
       _warehouses = results[0];
       _stock = results[1];
