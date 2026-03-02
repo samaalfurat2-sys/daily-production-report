@@ -73,7 +73,7 @@ jobs:
           name: windows-portable
           path: windows-portable.zip
 
-  build-android-debug-apk:
+  build-android-release-apk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -113,12 +113,12 @@ jobs:
           chmod +x bootstrap_flutter_project.sh
           ./bootstrap_flutter_project.sh ../production_report_app ../frontend_template
 
-      - name: Build Android debug APK
+      - name: Build Android release APK (split per ABI for smaller size)
         run: |
           cd production_report_app
-          flutter build apk --debug
+          flutter build apk --release --split-per-abi
 
       - uses: actions/upload-artifact@v4
         with:
-          name: android-apk-debug
-          path: production_report_app/build/app/outputs/flutter-apk/app-debug.apk
+          name: android-apk-release
+          path: production_report_app/build/app/outputs/flutter-apk/app-release-*.apk
