@@ -9,7 +9,6 @@ import 'approvals_screen.dart';
 import 'warehouse_screen.dart';
 import 'settings_screen.dart';
 import 'onedrive_sync_screen.dart';
-import 'onedrive_sync_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,40 +28,53 @@ class _HomeScreenState extends State<HomeScreen> {
     final isAdminOrSupervisor =
         appState.hasRole('supervisor') || appState.hasRole('admin');
 
-    final tabs = <Widget>[
-      const DashboardScreen(),
-      const ShiftListScreen(),
-      if (isAdminOrSupervisor) const ApprovalsScreen(),
-      if (appState.canSeeWarehouse) const WarehouseScreen(),
-      if (isAdminOrSupervisor) const OneDriveSyncScreen(),
-      const SettingsScreen(),
-      if (appState.hasRole('admin') || appState.hasRole('supervisor')) const OneDriveSyncScreen(),
-    ];
+    // Build tabs and nav items together to guarantee index alignment
+    final tabs = <Widget>[];
+    final items = <BottomNavigationBarItem>[];
 
-    final items = <BottomNavigationBarItem>[
-      BottomNavigationBarItem(
-          icon: const Icon(Icons.dashboard_outlined), label: t.dashboard),
-      BottomNavigationBarItem(
-          icon: const Icon(Icons.fact_check_outlined), label: t.shifts),
-      if (isAdminOrSupervisor)
-        BottomNavigationBarItem(
-            icon: const Icon(Icons.verified_outlined), label: t.approvals),
-      if (appState.canSeeWarehouse)
-        BottomNavigationBarItem(
-            icon: const Icon(Icons.warehouse_outlined), label: t.warehouses),
-      if (isAdminOrSupervisor)
-        BottomNavigationBarItem(
-            icon: const Icon(Icons.cloud_sync_outlined), label: t.oneDrive),
-      BottomNavigationBarItem(
-          icon: const Icon(Icons.settings_outlined), label: t.settings),
-    ];
+    // 1. Dashboard — always visible
+    tabs.add(const DashboardScreen());
+    items.add(BottomNavigationBarItem(
+        icon: const Icon(Icons.dashboard_outlined), label: t.dashboard));
 
-    if (_index >= tabs.length) _index = 0;
+    // 2. Shifts — always visible
+    tabs.add(const ShiftListScreen());
+    items.add(BottomNavigationBarItem(
+        icon: const Icon(Icons.fact_check_outlined), label: t.shifts));
+
+    // 3. Approvals — admin / supervisor only
+    if (isAdminOrSupervisor) {
+      tabs.add(const ApprovalsScreen());
+      items.add(BottomNavigationBarItem(
+          icon: const Icon(Icons.verified_outlined), label: t.approvals));
+    }
+
+    // 4. Warehouse — roles with warehouse access
+    if (appState.canSeeWarehouse) {
+      tabs.add(const WarehouseScreen());
+      items.add(BottomNavigationBarItem(
+          icon: const Icon(Icons.warehouse_outlined), label: t.warehouses));
+    }
+
+    // 5. OneDrive — admin / supervisor only
+    if (isAdminOrSupervisor) {
+      tabs.add(const OneDriveSyncScreen());
+      items.add(BottomNavigationBarItem(
+          icon: const Icon(Icons.cloud_sync_outlined), label: t.oneDrive));
+    }
+
+    // 6. Settings — always visible
+    tabs.add(const SettingsScreen());
+    items.add(BottomNavigationBarItem(
+        icon: const Icon(Icons.settings_outlined), label: t.settings));
+
+    // Guard against stale index after role change
+    final safeIndex = _index < tabs.length ? _index : 0;
 
     return Scaffold(
-      body: SafeArea(child: tabs[_index]),
+      body: SafeArea(child: tabs[safeIndex]),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
+        currentIndex: safeIndex,
         onTap: (i) => setState(() => _index = i),
         items: items,
         type: BottomNavigationBarType.fixed,
