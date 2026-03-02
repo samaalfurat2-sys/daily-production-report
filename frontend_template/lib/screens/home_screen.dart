@@ -9,6 +9,7 @@ import 'approvals_screen.dart';
 import 'warehouse_screen.dart';
 import 'settings_screen.dart';
 import 'onedrive_sync_screen.dart';
+import 'onedrive_sync_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (appState.canSeeWarehouse) const WarehouseScreen(),
       if (isAdminOrSupervisor) const OneDriveSyncScreen(),
       const SettingsScreen(),
+      if (appState.hasRole('admin') || appState.hasRole('supervisor')) const OneDriveSyncScreen(),
     ];
 
     final items = <BottomNavigationBarItem>[
