@@ -3,11 +3,13 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class GraphClient {
-  static const _clientId = 'd3590ed6-52b3-4102-aeff-aad2292ab01c';
-  static const _scope = 'Files.ReadWrite offline_access User.Read';
-  static const _tenantId = 'consumers';
-  static const _deviceCodeUrl = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode';
-  static const _tokenUrl = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token';
+  // Azure CLI public client – supports personal Microsoft accounts (MSA) + AAD.
+  // Replace with your own registered Azure AD app client ID for production.
+  static const _clientId = '04b07795-8542-4c4e-b821-a68a83c7df20';
+  static const _scope = 'https://graph.microsoft.com/Files.ReadWrite https://graph.microsoft.com/User.Read offline_access';
+  static const _tenantId = 'common';
+  static const _deviceCodeUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/devicecode';
+  static const _tokenUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
   static const _graphBaseUrl = 'https://graph.microsoft.com/v1.0';
   static const _keyRefreshToken = 'ms_refresh_token';
   static const _keyAccessToken = 'ms_access_token';
