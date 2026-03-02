@@ -27,7 +27,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final appState = context.read<AppState>();
-      _items = await appState.api.listShifts(status: 'Submitted', limit: 200);
+      _items = await appState.db.listShifts(status: 'Submitted', limit: 200);
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -66,7 +66,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                                 tooltip: t.approve,
                                 icon: const Icon(Icons.check_circle_outline),
                                 onPressed: () async {
-                                  await appState.api.approveShift(id);
+                                  await appState.db.approveShift(id);
                                   await _load();
                                 },
                               ),
