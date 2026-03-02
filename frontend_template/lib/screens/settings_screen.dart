@@ -40,7 +40,7 @@ class SettingsScreen extends StatelessWidget {
         ],
         const Divider(),
         ListTile(leading: const Icon(Icons.logout), title: Text(t.signOut), onTap: () => app.logout()),
-      ]))),
+      ])),
     );
   }
 
