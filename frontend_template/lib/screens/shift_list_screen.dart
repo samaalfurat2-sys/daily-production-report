@@ -27,7 +27,7 @@ class _ShiftListScreenState extends State<ShiftListScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final appState = context.read<AppState>();
-      _items = await appState.api.listShifts(limit: 200);
+      _items = await appState.db.listShifts(limit: 200);
     } catch (e) {
       _error = e.toString();
     } finally {
