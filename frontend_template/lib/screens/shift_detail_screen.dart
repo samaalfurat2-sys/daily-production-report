@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:production_report_app/gen_l10n/app_localizations.dart';
 
 class ShiftDetailScreen extends StatefulWidget {
   const ShiftDetailScreen({super.key, required this.shiftId});
