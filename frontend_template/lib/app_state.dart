@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/graph_client.dart';
 import 'services/onedrive_db.dart';
+import 'services/local_db.dart';
 
 class AppState extends ChangeNotifier {
   static const _kToken = 'token';
@@ -11,12 +12,23 @@ class AppState extends ChangeNotifier {
   List<String> roles = [];
   Map<String, bool> unitPermissions = {};
   GraphClient? _graphClient;
-  OneDriveDb? _db;
+  OneDriveDb? _oneDriveDb;
+  LocalDb? _localDb;
 
   bool get isLoggedIn => token != null && token!.isNotEmpty;
   bool get isConnectedToOneDrive => _graphClient?.isConnected ?? false;
 
-  OneDriveDb get db { _graphClient ??= GraphClient(); _db ??= OneDriveDb(_graphClient!); return _db!; }
+  /// Returns OneDriveDb when connected, otherwise falls back to LocalDb
+  dynamic get db {
+    if (isConnectedToOneDrive) {
+      _graphClient ??= GraphClient();
+      _oneDriveDb ??= OneDriveDb(_graphClient!);
+      return _oneDriveDb!;
+    }
+    _localDb ??= LocalDb();
+    return _localDb!;
+  }
+
   GraphClient get graph { _graphClient ??= GraphClient(); return _graphClient!; }
 
   Future<void> loadFromStorage() async {
@@ -24,9 +36,16 @@ class AppState extends ChangeNotifier {
     token = p.getString(_kToken);
     final lc = p.getString(_kLocale);
     if (lc != null && lc.isNotEmpty) locale = Locale(lc);
-    await graph.init();
+
+    // Initialize local DB always
+    _localDb ??= LocalDb();
+    await _localDb!.initialize();
+
+    // Try to reconnect OneDrive silently (may fail, that's OK)
+    try { await graph.init(); } catch (_) {}
     notifyListeners();
-    if (isLoggedIn && isConnectedToOneDrive) try { await refreshMe(); } catch (_) {}
+
+    if (isLoggedIn) try { await refreshMe(); } catch (_) {}
   }
 
   Future<void> setLocale(Locale? l) async {
@@ -40,35 +59,49 @@ class AppState extends ChangeNotifier {
 
   Future<bool> pollOneDriveConnection(String dc) async {
     final ok = await graph.pollDeviceCode(dc);
-    if (ok) { await db.initialize(); notifyListeners(); }
+    if (ok) {
+      _graphClient ??= GraphClient();
+      _oneDriveDb = OneDriveDb(_graphClient!);
+      await _oneDriveDb!.initialize();
+      notifyListeners();
+    }
     return ok;
   }
 
   Future<void> disconnectOneDrive() async { await graph.disconnect(); notifyListeners(); }
 
+  /// Login works with LOCAL storage even without OneDrive
   Future<void> login(String username, String password) async {
-    if (!isConnectedToOneDrive) throw Exception('OneDrive not connected');
+    // Try the active db (local if no OneDrive)
     final user = await db.login(username, password);
     token = username;
     roles = List<String>.from(user['roles'] ?? []);
     unitPermissions = Map<String, bool>.from(user['unit_permissions'] ?? {});
     final p = await SharedPreferences.getInstance();
     await p.setString(_kToken, token!);
+    // Set locale from user preference
+    final pl = user['preferred_locale']?.toString();
+    if (pl == 'ar' || pl == 'en') {
+      locale = Locale(pl!);
+      await p.setString(_kLocale, pl);
+    }
     notifyListeners();
   }
 
   Future<void> refreshMe() async {
-    if (token == null || !isConnectedToOneDrive) return;
-    final me = await db.getMe(token!);
-    roles = List<String>.from(me['roles'] ?? []);
-    unitPermissions = Map<String, bool>.from(me['unit_permissions'] ?? {});
-    final pl = me['preferred_locale']?.toString();
-    if (pl == 'ar' || pl == 'en') {
-      locale = Locale(pl!);
-      final p = await SharedPreferences.getInstance();
-      await p.setString(_kLocale, pl);
-    }
-    notifyListeners();
+    if (token == null) return;
+    try {
+      final me = await db.getMe(token!);
+      roles = List<String>.from(me['roles'] ?? []);
+      unitPermissions = Map<String, bool>.from(me['unit_permissions'] ?? {});
+      final pl = me['preferred_locale']?.toString();
+      if (pl == 'ar' || pl == 'en') {
+        locale = Locale(pl!);
+        final p = await SharedPreferences.getInstance();
+        await p.setString(_kLocale, pl);
+      }
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> logout() async {
@@ -83,32 +116,23 @@ class AppState extends ChangeNotifier {
 
   /// أمين مخزن المواد الخام
   bool get isRawWarehouseKeeper => hasRole('raw_warehouse_keeper');
-
   /// مشرف صالة الإنتاج
   bool get isProductionSupervisor => hasRole('production_supervisor') || hasRole('operator');
-
   /// أمين مخزن المنتج الجاهز
   bool get isFgWarehouseKeeper => hasRole('fg_warehouse_keeper');
-
   /// أمين مخزن المحروقات
   bool get isFuelWarehouseKeeper => hasRole('fuel_warehouse_keeper');
-
   /// محاسب المخازن
   bool get isWarehouseAccountant => hasRole('warehouse_accountant');
-
-  /// مراقب الحسابات – يرحّل ويؤكد
+  /// مراقب الحسابات
   bool get isAuditorController => hasRole('auditor_controller') || hasRole('supervisor');
-
-  /// المدير العام – عرض كامل
+  /// المدير العام
   bool get isGeneralManager => hasRole('general_manager') || hasRole('admin');
-
-  /// مدقق الحسابات – عرض فقط
+  /// مدقق الحسابات (قراءة فقط)
   bool get isAccountAuditor => hasRole('account_auditor') || hasRole('viewer');
-
-  /// Can write (all except read-only auditor)
+  /// Can write
   bool get canWrite => !isAccountAuditor || isGeneralManager;
 
-  /// Warehouse access (any warehouse role)
   bool get canSeeWarehouse =>
       isRawWarehouseKeeper || isFgWarehouseKeeper || isFuelWarehouseKeeper ||
       isWarehouseAccountant || isAuditorController || isGeneralManager || isAccountAuditor;

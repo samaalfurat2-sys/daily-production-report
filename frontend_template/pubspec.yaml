@@ -1,6 +1,6 @@
 name: production_report_app
 description: Daily Production Report (Windows + Android)
-version: 2.0.1+2
+version: 3.0.0+3
 publish_to: none
 
 environment:
@@ -16,6 +16,7 @@ dependencies:
   shared_preferences: ^2.3.2
   provider: ^6.1.2
   crypto: ^3.0.3
+  path_provider: ^2.1.0
 
 dev_dependencies:
   flutter_test:
