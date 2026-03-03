@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AndroidManifest.xml — Daily Production Report App
+  ──────────────────────────────────────────────────
+  MAINTAINER CHECKLIST before building a release APK:
+
+  1. Replace "com.example.production_report_app" everywhere below with your
+     actual applicationId (set in android/app/build.gradle).
+
+  2. For the msauth:// intent-filter (OAuth redirect), obtain your SHA-1
+     signing fingerprint and register it in Azure (see README.md →
+     "Android OneDrive Sign-In Setup").  Then update
+     lib/auth/onedrive_auth.dart to set your base64-encoded SHA-1.
+
+  The intent-filter below is required only when using the PKCE
+  (flutter_appauth) flow.  The default device-code flow works without it.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Required for Microsoft Graph API / OneDrive calls over HTTPS -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application
+        android:label="production_report_app"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme"/>
+
+            <!-- App launcher intent-filter -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!--
+              OAuth redirect intent-filter for flutter_appauth / MSAL (PKCE flow).
+
+              The redirect URI registered in Azure must follow this format:
+                msauth://<package_name>/<url-encoded-base64-sha1-fingerprint>
+
+              Example:
+                msauth://com.example.production_report_app/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%3D
+
+              HOW TO REGISTER:
+                1. Get your SHA-1 fingerprint (see README.md → Step 1).
+                2. In Azure Portal → App Registrations → your app →
+                   Authentication → Add a platform → Android.
+                3. Enter your Package name and Signature hash.
+                   Azure generates the redirect URI automatically.
+
+              REPLACE "com.example.production_report_app" below with your
+              actual applicationId if you rename the package.
+
+              NOTE: This intent-filter is only needed for the PKCE flow
+              (lib/auth/onedrive_auth.dart).  The device-code flow (default)
+              does not require it, but it is safe to leave it in place.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="msauth"
+                    android:host="com.example.production_report_app"/>
+                    <!-- TODO: Replace "com.example.production_report_app" in android:host
+                         above with your actual applicationId before shipping. -->
+            </intent-filter>
+
+        </activity>
+
+        <!-- Required: tells the Flutter engine which embedding version to use -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2"/>
+
+    </application>
+</manifest>

@@ -108,3 +108,47 @@ ONEDRIVE_FOLDER=ProductionReports
 | `invalid_grant` | Token expired — re-authenticate via the app |
 | `Files not appearing` | Check `ONEDRIVE_FOLDER` matches the folder name |
 | `403 Forbidden` | App needs `Files.ReadWrite` permission in Azure |
+
+---
+
+## Android Sign-In Troubleshooting
+
+### Why the OAuth redirect fails on Android
+
+When using the browser-redirect (PKCE) flow rather than the device-code flow,
+Android must route the `msauth://` redirect back to the app via an
+**intent-filter**.  If the intent-filter is missing or the redirect URI is not
+registered in Azure, the browser cannot return to the app and sign-in stalls.
+
+The **device-code flow** (default) is NOT affected by this — it works on all
+platforms without any redirect URI configuration.
+
+### Setup checklist
+
+- [ ] `INTERNET` permission in `AndroidManifest.xml` *(already set)*.
+- [ ] `android:launchMode="singleTask"` on `MainActivity` *(already set)*.
+- [ ] `msauth://` intent-filter present in `AndroidManifest.xml` with the
+      correct `android:host` matching your `applicationId` *(already set for
+      the default package name `com.example.production_report_app`)*.
+- [ ] Azure redirect URI registered for your package name **and** SHA-1
+      signing fingerprint (see README.md → Step 3).
+- [ ] `_sha1Placeholder` in `lib/auth/onedrive_auth.dart` replaced with the
+      base64-encoded SHA-1 from your Azure App Registration (see README.md →
+      Step 4).
+
+### Quick diagnostic commands
+
+```bash
+# Verify the intent-filter is installed on-device
+adb shell dumpsys package com.example.production_report_app | grep -A5 "msauth"
+
+# Stream auth-related log output while reproducing the issue
+adb logcat | grep -iE "msal|oauth|OneDriveAuth|flutter"
+
+# Save a log snapshot for analysis
+adb logcat -d > /tmp/logcat_$(date +%Y%m%d_%H%M%S).txt
+```
+
+See **README.md → "Android OneDrive Sign-In Setup"** for the full step-by-step
+guide including SHA-1 fingerprint retrieval and Azure registration.
+See **`commands.txt`** at the repo root for the complete keytool / adb reference.
