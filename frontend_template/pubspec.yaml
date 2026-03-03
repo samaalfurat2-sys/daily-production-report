@@ -17,6 +17,10 @@ dependencies:
   provider: ^6.1.2
   crypto: ^3.0.3
   path_provider: ^2.1.0
+  # flutter_appauth provides the PKCE / authorization-code OAuth flow for Android.
+  # Used by lib/auth/onedrive_auth.dart as the recommended alternative to the
+  # device-code flow (graph_client.dart) when running on Android devices.
+  flutter_appauth: ^8.0.1
 
 dev_dependencies:
   flutter_test:
