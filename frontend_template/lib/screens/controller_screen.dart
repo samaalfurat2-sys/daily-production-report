@@ -26,12 +26,12 @@ class _ControllerScreenState extends State<ControllerScreen>
     setState(() { _loading = true; _error = null; });
     try {
       final db = context.read<AppState>().db;
-      final results = await Future.wait([
-        db.listShifts(status: 'submitted'),
-        db.listShifts(status: 'approved'),
-        db.listTransfers(status: 'confirmed'),
-        db.listInvoices(status: 'confirmed'),
-        db.listFuelLogs(status: 'confirmed'),
+      final results = await Future.wait(<Future<List>>[
+        (db.listShifts(status: 'submitted') as Future<List>),
+        (db.listShifts(status: 'approved') as Future<List>),
+        (db.listTransfers(status: 'confirmed') as Future<List>),
+        (db.listInvoices(status: 'confirmed') as Future<List>),
+        (db.listFuelLogs(status: 'confirmed') as Future<List>),
       ]);
       _data = {
         'shifts_to_approve': results[0],

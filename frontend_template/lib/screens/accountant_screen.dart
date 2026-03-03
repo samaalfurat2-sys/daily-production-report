@@ -29,11 +29,11 @@ class _AccountantScreenState extends State<AccountantScreen>
     setState(() { _loading = true; _error = null; });
     try {
       final db = context.read<AppState>().db;
-      final results = await Future.wait([
-        db.listShifts(),
-        db.listTransfers(),
-        db.listInvoices(),
-        db.listFuelLogs(),
+      final results = await Future.wait(<Future<List>>[
+        (db.listShifts() as Future<List>),
+        (db.listTransfers() as Future<List>),
+        (db.listInvoices() as Future<List>),
+        (db.listFuelLogs() as Future<List>),
       ]);
       _shifts = results[0]; _transfers = results[1];
       _invoices = results[2]; _fuelLogs = results[3];

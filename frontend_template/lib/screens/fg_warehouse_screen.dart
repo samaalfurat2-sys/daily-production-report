@@ -35,11 +35,11 @@ class _FgWarehouseScreenState extends State<FgWarehouseScreen>
     setState(() { _loading = true; _error = null; });
     try {
       final db = context.read<AppState>().db;
-      final results = await Future.wait([
-        db.listStock(warehouseCode: 'FG'),
-        db.listTransfers(toWarehouse: 'FG'),
-        db.listInvoices(),
-        db.listItems(warehouseCode: 'FG'),
+      final results = await Future.wait(<Future<List>>[
+        (db.listStock(warehouseCode: 'FG') as Future<List>),
+        (db.listTransfers(toWarehouse: 'FG') as Future<List>),
+        (db.listInvoices() as Future<List>),
+        (db.listItems(warehouseCode: 'FG') as Future<List>),
       ]);
       _stock = results[0]; _transfers = results[1];
       _invoices = results[2]; _items = results[3];

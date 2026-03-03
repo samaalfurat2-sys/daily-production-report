@@ -34,7 +34,7 @@ class _FuelWarehouseScreenState extends State<FuelWarehouseScreen>
     setState(() { _loading = true; _error = null; });
     try {
       final db = context.read<AppState>().db;
-      final results = await Future.wait([db.listFuelLogs(), db.listStock(warehouseCode: 'FUEL')]);
+      final results = await Future.wait<List>([db.listFuelLogs() as Future<List>, db.listStock(warehouseCode: 'FUEL') as Future<List>]);
       _logs = results[0]; _stock = results[1];
     } catch (e) { _error = e.toString(); }
     finally { if (mounted) setState(() => _loading = false); }
