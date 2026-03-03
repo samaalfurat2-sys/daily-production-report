@@ -1,0 +1,167 @@
+name: Create Release with Download Links
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v3.0.1). Leave blank to overwrite "latest".'
+        required: false
+        default: 'latest'
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Build Android debug APK (no signing secrets needed) ────────────────────
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Flutter pub cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('frontend_template/pubspec.yaml') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Bootstrap Flutter project
+        run: |
+          cd scripts
+          chmod +x bootstrap_flutter_project.sh
+          ./bootstrap_flutter_project.sh ../production_report_app ../frontend_template
+
+      - name: Build Android debug APK
+        run: |
+          cd production_report_app
+          flutter build apk --debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-debug
+          path: production_report_app/build/app/outputs/flutter-apk/app-debug.apk
+
+  # ── Build Windows installer + portable zip ─────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Cache Flutter pub cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ${{ env.LOCALAPPDATA }}\Pub\Cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('frontend_template/pubspec.yaml') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Bootstrap Flutter project
+        run: |
+          Set-Location scripts
+          powershell -ExecutionPolicy Bypass -File .\bootstrap_flutter_project.ps1 -ProjectPath ..\production_report_app -TemplatePath ..\frontend_template
+
+      - name: Build Windows portable app
+        run: |
+          Set-Location scripts
+          powershell -ExecutionPolicy Bypass -File .\build_windows.ps1 -ProjectPath ..\production_report_app
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Windows installer (Setup.exe)
+        run: iscc installer\windows_installer.iss
+
+      - name: Compress Windows portable output
+        run: |
+          Compress-Archive `
+            -Path production_report_app\build\windows\x64\runner\Release\* `
+            -DestinationPath windows-portable.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-setup-exe
+          path: installer_output/ProductionReportSetup.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: windows-portable.zip
+
+  # ── Publish GitHub Release with permanent download links ───────────────────
+  create-release:
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || 'latest' }}
+          name: "Production Report App ${{ github.event.inputs.tag || 'latest' }}"
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            dist/android-apk-debug/app-debug.apk
+            dist/windows-setup-exe/ProductionReportSetup.exe
+            dist/windows-portable/windows-portable.zip
+          body: |
+            ## 📥 Download Links / روابط التحميل
+
+            | File | Description | الوصف |
+            |------|-------------|-------|
+            | `app-debug.apk` | Android APK (tap to install) | تطبيق أندرويد (اضغط للتثبيت) |
+            | `ProductionReportSetup.exe` | Windows installer | مثبّت ويندوز |
+            | `windows-portable.zip` | Windows portable (no install needed) | نسخة ويندوز مباشرة |
+
+            ---
+
+            ### 📱 Install on Android / التثبيت على أندرويد
+            1. Download `app-debug.apk`
+            2. On your Android device: **Settings → Security → Allow unknown sources**
+            3. Open the downloaded file and tap **Install**
+
+            ---
+
+            ### 🖥️ Install on Windows / التثبيت على ويندوز
+            - **Installer:** Run `ProductionReportSetup.exe` (recommended)
+            - **Portable:** Extract `windows-portable.zip` → run `production_report_app.exe`
+
+            ---
+
+            > **Default login / بيانات الدخول الافتراضية:** `admin / Admin1234`
