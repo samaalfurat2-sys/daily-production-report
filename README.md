@@ -1,5 +1,17 @@
 # Daily Production Report App (Windows + Android) — Source Project v2.0
 
+## 📥 Downloads / التحميل
+
+Pre-built installers are published to the **[Releases page](../../releases/latest)**.
+
+| File | Platform | الملف |
+|------|----------|-------|
+| `app-debug.apk` | Android | تطبيق أندرويد |
+| `ProductionReportSetup.exe` | Windows | مثبّت ويندوز |
+| `windows-portable.zip` | Windows (portable) | نسخة ويندوز مباشرة |
+
+To build a new release: **Actions → Create Release with Download Links → Run workflow**
+
 This project is a buildable source package for a bilingual Daily Production Report system with:
 - Windows desktop app (Flutter Windows)
 - Android app (Flutter Android)

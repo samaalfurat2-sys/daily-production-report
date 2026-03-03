@@ -11,7 +11,8 @@
 5. بعد اكتمال التشغيل نزّل المخرجات التالية:
    - **windows-setup-exe** → يحتوي ملف **ProductionReportSetup.exe** للتثبيت على ويندوز.
    - **windows-portable** → يحتوي نسخة ويندوز الجاهزة للتشغيل مباشرة.
-   - **android-apk-debug** → يحتوي ملف **app-debug.apk** قابل للتثبيت على أندرويد.
+   - **android-apk-debug** → يحتوي ملف **app-debug.apk** قابل للتثبيت على أندرويد (للاختبار).
+   - **android-apk-release** → يحتوي ملفات **app-\*-release.apk** (مقسّمة حسب نوع المعالج) للتثبيت على أندرويد.
 
 ### إذا أردت APK/AAB إصدار Release
 شغّل workflow باسم **Build Android Release Optional** بعد إضافة أسرار GitHub التالية:
@@ -35,7 +36,8 @@ This package does not contain prebuilt EXE or APK files. To generate installers 
 5. Download these artifacts:
    - **windows-setup-exe** → contains **ProductionReportSetup.exe** Windows installer.
    - **windows-portable** → ready-to-run Windows app bundle.
-   - **android-apk-debug** → contains **app-debug.apk** for Android installation.
+   - **android-apk-debug** → contains **app-debug.apk** for Android installation (testing).
+   - **android-apk-release** → contains **app-\*-release.apk** (split per ABI) for Android installation.
 
 ### If you need signed release APK/AAB
 Run **Build Android Release Optional** after adding these GitHub Secrets:
