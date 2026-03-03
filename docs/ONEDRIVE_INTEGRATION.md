@@ -108,3 +108,25 @@ ONEDRIVE_FOLDER=ProductionReports
 | `invalid_grant` | Token expired — re-authenticate via the app |
 | `Files not appearing` | Check `ONEDRIVE_FOLDER` matches the folder name |
 | `403 Forbidden` | App needs `Files.ReadWrite` permission in Azure |
+
+---
+
+## Android Sign-In Troubleshooting
+
+### Why the OAuth redirect fails on Android
+
+When using a browser-redirect (PKCE) flow rather than the device-code flow,
+Android must route the `msauth://` redirect back to the app via an
+**intent-filter**.  If the intent-filter is missing or the redirect URI is not
+registered in Azure, the browser cannot return to the app and sign-in stalls.
+
+### Checklist
+
+- [ ] `INTERNET` permission in `AndroidManifest.xml` (already set).
+- [ ] `android:launchMode="singleTask"` on `MainActivity` (already set).
+- [ ] `msauth://` intent-filter in `AndroidManifest.xml` with correct `android:host` (already set for the default package name).
+- [ ] Azure redirect URI registered for your package name **and** SHA-1 fingerprint.
+- [ ] `_redirectUri` in `lib/auth/onedrive_auth.dart` matches the Azure-registered URI.
+
+See **README.md → "Android OneDrive Sign-In Setup"** for the step-by-step
+instructions including SHA-1 retrieval and logcat commands.
