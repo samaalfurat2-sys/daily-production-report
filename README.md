@@ -1,4 +1,4 @@
-# Daily Production Report App (Windows + Android) — Source Project v2.0
+# Daily Production Report App (Windows + Android) — Source Project v3.0.0
 
 This project is a buildable source package for a bilingual Daily Production Report system with:
 - Windows desktop app (Flutter Windows)
