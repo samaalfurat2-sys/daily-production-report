@@ -43,16 +43,10 @@ class _WarehouseScreenState extends State<WarehouseScreen> with SingleTickerProv
     setState(() { _loading = true; _error = null; });
     try {
       final db = context.read<AppState>().db;
-      final results = await Future.wait(<Future<List>>[
-        (db.listWarehouses() as Future<List>),
-        (db.listStock() as Future<List>),
-        (db.listTransactions() as Future<List>),
-        (db.listItems() as Future<List>),
-      ]);
-      _warehouses = results[0];
-      _stock = results[1];
-      _transactions = results[2];
-      _items = results[3];
+      _warehouses = (await db.listWarehouses()) as List;
+      _stock = (await db.listStock()) as List;
+      _transactions = (await db.listTransactions()) as List;
+      _items = (await db.listItems()) as List;
       if (_warehouses.isNotEmpty) _warehouseCode = (_warehouses.first as Map<String, dynamic>)['code'].toString();
       if (_items.isNotEmpty) _itemCode = (_items.first as Map<String, dynamic>)['code'].toString();
     } catch (e) {

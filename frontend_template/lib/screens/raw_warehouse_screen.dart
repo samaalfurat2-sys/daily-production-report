@@ -39,14 +39,10 @@ class _RawWarehouseScreenState extends State<RawWarehouseScreen>
     setState(() { _loading = true; _error = null; });
     try {
       final db = context.read<AppState>().db;
-      final results = await Future.wait(<Future<List>>[
-        (db.listStock(warehouseCode: 'RAW') as Future<List>),
-        (db.listTransactions(warehouseCode: 'RAW') as Future<List>),
-        (db.listTransfers(fromWarehouse: 'RAW') as Future<List>),
-        (db.listItems(warehouseCode: 'RAW') as Future<List>),
-      ]);
-      _stock = results[0]; _txns = results[1];
-      _transfers = results[2]; _items = results[3];
+      _stock = (await db.listStock(warehouseCode: 'RAW')) as List;
+      _txns = (await db.listTransactions(warehouseCode: 'RAW')) as List;
+      _transfers = (await db.listTransfers(fromWarehouse: 'RAW')) as List;
+      _items = (await db.listItems(warehouseCode: 'RAW')) as List;
       if (_items.isNotEmpty) _itemCode = (_items.first as Map)['code'].toString();
     } catch (e) { _error = e.toString(); }
     finally { if (mounted) setState(() => _loading = false); }

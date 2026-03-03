@@ -29,14 +29,10 @@ class _AccountantScreenState extends State<AccountantScreen>
     setState(() { _loading = true; _error = null; });
     try {
       final db = context.read<AppState>().db;
-      final results = await Future.wait(<Future<List>>[
-        (db.listShifts() as Future<List>),
-        (db.listTransfers() as Future<List>),
-        (db.listInvoices() as Future<List>),
-        (db.listFuelLogs() as Future<List>),
-      ]);
-      _shifts = results[0]; _transfers = results[1];
-      _invoices = results[2]; _fuelLogs = results[3];
+      _shifts = (await db.listShifts()) as List;
+      _transfers = (await db.listTransfers()) as List;
+      _invoices = (await db.listInvoices()) as List;
+      _fuelLogs = (await db.listFuelLogs()) as List;
     } catch (e) { _error = e.toString(); }
     finally { if (mounted) setState(() => _loading = false); }
   }

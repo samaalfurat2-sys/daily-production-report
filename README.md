@@ -51,3 +51,26 @@ Android:
 flutter build apk --release
 flutter build appbundle --release
 ```
+
+## OneDrive Integration (Device Code Flow)
+
+The app uses Microsoft's **Device Code Flow** for OneDrive authentication. No redirect URI or browser deeplink is required.
+
+### How it works
+1. Tap **Connect Personal OneDrive** in the OneDrive Sync screen.
+2. A code (e.g. `ABCD1234`) and URL (`https://microsoft.com/devicelogin`) are displayed.
+3. Open that URL in any browser, enter the code, and sign in with your personal Microsoft (Outlook / Hotmail / Live) account.
+4. Tap **I've signed in** in the app to confirm and receive the access token.
+
+### Azure App Registration (for developers / IT)
+The app uses a pre-configured Azure AD Application (`client_id: d2123462-2f0c-44f5-8f0e-ff2f489c7449`) registered for personal Microsoft accounts.
+
+If you need to create your own registration:
+1. Go to [Azure Portal → App registrations](https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade).
+2. Click **New registration** → choose **Accounts in any organizational directory and personal Microsoft accounts**.
+3. No redirect URI is needed for Device Code Flow. Leave it blank or add `https://login.microsoftonline.com/common/oauth2/nativeclient` as a **Mobile and desktop applications** URI.
+4. Under **Authentication → Advanced settings**, enable **Allow public client flows**.
+5. Copy the **Application (client) ID** and update `_clientId` in `frontend_template/lib/services/graph_client.dart`.
+
+### Android permissions
+The `AndroidManifest.xml` template in `frontend_template/android/app/src/main/` explicitly declares `android.permission.INTERNET`, which is required for all HTTPS calls to Microsoft's OAuth endpoints.
