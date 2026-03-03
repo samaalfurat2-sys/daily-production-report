@@ -22,7 +22,7 @@ ONEDRIVE_FOLDER         – OneDrive folder path, e.g. "ProductionReports"
 import os
 import time
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 import httpx
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
-import uuid
+from typing import List, Optional, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -11,7 +10,6 @@ from app import models
 from app.schemas import UserInfo
 from app.security import hash_password
 from pydantic import BaseModel
-from typing import Dict
 
 router = APIRouter(tags=["users"])
 

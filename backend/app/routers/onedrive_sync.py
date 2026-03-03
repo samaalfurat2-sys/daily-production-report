@@ -16,7 +16,7 @@ POST /onedrive/sync/all        – run all exports + DB backup in one call
 import io
 import os
 import logging
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
@@ -85,7 +85,6 @@ def _build_shifts_excel(db: Session) -> bytes:
     """Export all approved/locked shifts with sub-reports to Excel bytes."""
     try:
         import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment
     except ImportError:
         raise HTTPException(
             status_code=500,
@@ -97,19 +96,18 @@ def _build_shifts_excel(db: Session) -> bytes:
     # ── Sheet 1: Shift Summary ────────────────────────────────────────────────
     ws = wb.active
     ws.title = "Shifts"
-    header = ["ID", "Date", "Shift", "Unit", "Status", "Operator", "Supervisor",
+    header = ["ID", "Date", "Shift", "Status", "Created By", "Approved By",
               "Created", "Approved"]
     _excel_header_row(ws, header)
-    shifts = db.query(models.ShiftRecord).order_by(models.ShiftRecord.shift_date.desc()).all()
+    shifts = db.query(models.ShiftRecord).order_by(models.ShiftRecord.report_date.desc()).all()
     for s in shifts:
         ws.append([
             str(s.id),
-            str(s.shift_date),
+            str(s.report_date),
             s.shift_code,
-            s.unit_code,
             s.status,
-            s.operator.full_name if s.operator else "",
-            s.supervisor.full_name if s.supervisor else "",
+            str(s.created_by) if s.created_by else "",
+            str(s.approved_by) if s.approved_by else "",
             str(s.created_at)[:19] if s.created_at else "",
             str(s.approved_at)[:19] if s.approved_at else "",
         ])
@@ -117,54 +115,57 @@ def _build_shifts_excel(db: Session) -> bytes:
 
     # ── Sheet 2: Blow Reports ─────────────────────────────────────────────────
     ws2 = wb.create_sheet("Blow")
-    blow_header = ["Shift ID", "Date", "Shift", "raw_input", "good_output",
-                   "waste", "waste_pct", "notes"]
+    blow_header = ["Shift ID", "Date", "Shift", "prev_cartons", "received_cartons",
+                   "next_cartons", "product_cartons", "waste_preforms_pcs",
+                   "waste_scrap_pcs", "waste_bottles_pcs"]
     _excel_header_row(ws2, blow_header)
     for s in shifts:
         if s.blow:
             b = s.blow
-            ws2.append([str(s.id), str(s.shift_date), s.shift_code,
-                        b.raw_input, b.good_output, b.waste,
-                        round(b.waste_pct or 0, 2), b.notes or ""])
+            ws2.append([str(s.id), str(s.report_date), s.shift_code,
+                        b.prev_cartons, b.received_cartons, b.next_cartons,
+                        b.product_cartons, b.waste_preforms_pcs,
+                        b.waste_scrap_pcs, b.waste_bottles_pcs])
     _autofit(ws2)
 
     # ── Sheet 3: Filling Reports ──────────────────────────────────────────────
     ws3 = wb.create_sheet("Filling")
-    fill_header = ["Shift ID", "Date", "Shift", "preforms_used", "bottles_good",
-                   "bottles_waste", "waste_pct", "notes"]
+    fill_header = ["Shift ID", "Date", "Shift", "prev_cartons", "received_cartons",
+                   "next_cartons", "waste_caps_pcs", "waste_scrap_pcs", "waste_bottles_pcs"]
     _excel_header_row(ws3, fill_header)
     for s in shifts:
         if s.filling:
             f = s.filling
-            ws3.append([str(s.id), str(s.shift_date), s.shift_code,
-                        f.preforms_used, f.bottles_good, f.bottles_waste,
-                        round(f.waste_pct or 0, 2), f.notes or ""])
+            ws3.append([str(s.id), str(s.report_date), s.shift_code,
+                        f.prev_cartons, f.received_cartons, f.next_cartons,
+                        f.waste_caps_pcs, f.waste_scrap_pcs, f.waste_bottles_pcs])
     _autofit(ws3)
 
     # ── Sheet 4: Label Reports ────────────────────────────────────────────────
     ws4 = wb.create_sheet("Label")
-    lbl_header = ["Shift ID", "Date", "Shift", "bottles_in", "labelled_good",
-                  "label_waste", "waste_pct", "notes"]
+    lbl_header = ["Shift ID", "Date", "Shift", "prev_rolls", "received_rolls",
+                  "next_rolls", "waste_grams"]
     _excel_header_row(ws4, lbl_header)
     for s in shifts:
         if s.label:
             l = s.label
-            ws4.append([str(s.id), str(s.shift_date), s.shift_code,
-                        l.bottles_in, l.labelled_good, l.label_waste,
-                        round(l.waste_pct or 0, 2), l.notes or ""])
+            ws4.append([str(s.id), str(s.report_date), s.shift_code,
+                        l.prev_rolls, l.received_rolls, l.next_rolls,
+                        l.waste_grams])
     _autofit(ws4)
 
     # ── Sheet 5: Diesel Reports ───────────────────────────────────────────────
     ws5 = wb.create_sheet("Diesel")
-    die_header = ["Shift ID", "Date", "Shift", "opening_meter", "closing_meter",
-                  "consumption_litres", "notes"]
+    die_header = ["Shift ID", "Date", "Shift", "gen1_total_reading", "gen1_consumed",
+                  "gen2_total_reading", "gen2_consumed", "main_tank_received"]
     _excel_header_row(ws5, die_header)
     for s in shifts:
         if s.diesel:
             d = s.diesel
-            ws5.append([str(s.id), str(s.shift_date), s.shift_code,
-                        d.opening_meter, d.closing_meter,
-                        d.consumption_litres, d.notes or ""])
+            ws5.append([str(s.id), str(s.report_date), s.shift_code,
+                        d.generator1_total_reading, d.generator1_consumed,
+                        d.generator2_total_reading, d.generator2_consumed,
+                        d.main_tank_received])
     _autofit(ws5)
 
     buf = io.BytesIO()
@@ -191,24 +192,31 @@ def _build_inventory_excel(db: Session) -> bytes:
                             "Balance Qty", "Last Updated"])
     warehouses = db.query(models.Warehouse).all()
     for wh in warehouses:
-        for item in wh.items:
+        # Group transactions by item to compute per-item balance in this warehouse
+        txn_by_item = {}
+        for t in wh.transactions:
+            iid = t.item_id
+            if iid not in txn_by_item:
+                txn_by_item[iid] = (t.item, [])
+            txn_by_item[iid][1].append(t)
+        for item, txns in txn_by_item.values():
             balance = sum(
-                (t.qty if t.direction == "in" else -t.qty)
-                for t in item.transactions
+                (float(t.qty) if t.txn_type in ("RECEIVE", "ADJUST") else -float(t.qty))
+                for t in txns
             )
             last_tx = max(
-                (t.created_at for t in item.transactions if t.created_at),
+                (t.created_at for t in txns if t.created_at),
                 default=None,
             )
-            ws.append([wh.name, item.code, item.name, item.unit,
+            ws.append([wh.name_en, item.code, item.name_en, item.uom,
                        round(balance, 3),
                        str(last_tx)[:19] if last_tx else ""])
     _autofit(ws)
 
     # ── Transactions ──────────────────────────────────────────────────────────
     ws2 = wb.create_sheet("Transactions")
-    _excel_header_row(ws2, ["Date", "Warehouse", "Item", "Direction",
-                             "Qty", "Reference", "Notes", "Clerk"])
+    _excel_header_row(ws2, ["Date", "Warehouse", "Item", "Type",
+                             "Qty", "Reference", "Note", "Created By"])
     txns = (db.query(models.InventoryTransaction)
             .order_by(models.InventoryTransaction.created_at.desc())
             .limit(2000)
@@ -216,13 +224,13 @@ def _build_inventory_excel(db: Session) -> bytes:
     for t in txns:
         ws2.append([
             str(t.created_at)[:19] if t.created_at else "",
-            t.item.warehouse.name if t.item and t.item.warehouse else "",
-            t.item.name if t.item else "",
-            t.direction,
-            t.qty,
-            t.reference or "",
-            t.notes or "",
-            t.clerk.full_name if t.clerk else "",
+            t.warehouse.name_en if t.warehouse else "",
+            t.item.name_en if t.item else "",
+            t.txn_type,
+            float(t.qty),
+            t.reference_id or "",
+            t.note or "",
+            str(t.created_by) if t.created_by else "",
         ])
     _autofit(ws2)
 
