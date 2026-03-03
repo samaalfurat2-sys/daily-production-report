@@ -26,19 +26,17 @@ class _ControllerScreenState extends State<ControllerScreen>
     setState(() { _loading = true; _error = null; });
     try {
       final db = context.read<AppState>().db;
-      final results = await Future.wait(<Future<List>>[
-        (db.listShifts(status: 'submitted') as Future<List>),
-        (db.listShifts(status: 'approved') as Future<List>),
-        (db.listTransfers(status: 'confirmed') as Future<List>),
-        (db.listInvoices(status: 'confirmed') as Future<List>),
-        (db.listFuelLogs(status: 'confirmed') as Future<List>),
-      ]);
+      final submittedShifts = (await db.listShifts(status: 'submitted')) as List;
+      final approvedShifts = (await db.listShifts(status: 'approved')) as List;
+      final confirmedTransfers = (await db.listTransfers(status: 'confirmed')) as List;
+      final confirmedInvoices = (await db.listInvoices(status: 'confirmed')) as List;
+      final confirmedFuelLogs = (await db.listFuelLogs(status: 'confirmed')) as List;
       _data = {
-        'shifts_to_approve': results[0],
-        'shifts_to_post': results[1],
-        'transfers_to_post': results[2],
-        'invoices_to_post': results[3],
-        'fuel_logs_to_post': results[4],
+        'shifts_to_approve': submittedShifts,
+        'shifts_to_post': approvedShifts,
+        'transfers_to_post': confirmedTransfers,
+        'invoices_to_post': confirmedInvoices,
+        'fuel_logs_to_post': confirmedFuelLogs,
       };
     } catch (e) { _error = e.toString(); }
     finally { if (mounted) setState(() => _loading = false); }

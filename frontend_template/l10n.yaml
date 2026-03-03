@@ -2,9 +2,6 @@ arb-dir: lib/l10n
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart
 output-class: AppLocalizations
-# synthetic-package: false  → generated files go to output-dir inside lib/
-# so they become part of the app package and need no separate flutter_gen package.
-# This avoids "Couldn't resolve the package 'flutter_gen'" errors in CI with
-# Flutter >=3.24 where the synthetic package registration was changed.
-synthetic-package: false
+# Generated files go to output-dir inside lib/ so they become part of the
+# app package without needing a separate flutter_gen package.
 output-dir: lib/gen_l10n
