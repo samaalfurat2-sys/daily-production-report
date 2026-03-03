@@ -78,7 +78,43 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── Role Checkers ─────────────────────────────────────────────────────────
   bool hasRole(String r) => roles.contains(r);
-  bool canEditUnit(String u) { if (hasRole('admin') || hasRole('supervisor')) return true; return unitPermissions[u] == true; }
-  bool get canSeeWarehouse => hasRole('admin') || hasRole('warehouse_clerk') || hasRole('warehouse_supervisor') || hasRole('supervisor');
+
+  /// أمين مخزن المواد الخام
+  bool get isRawWarehouseKeeper => hasRole('raw_warehouse_keeper');
+
+  /// مشرف صالة الإنتاج
+  bool get isProductionSupervisor => hasRole('production_supervisor') || hasRole('operator');
+
+  /// أمين مخزن المنتج الجاهز
+  bool get isFgWarehouseKeeper => hasRole('fg_warehouse_keeper');
+
+  /// أمين مخزن المحروقات
+  bool get isFuelWarehouseKeeper => hasRole('fuel_warehouse_keeper');
+
+  /// محاسب المخازن
+  bool get isWarehouseAccountant => hasRole('warehouse_accountant');
+
+  /// مراقب الحسابات – يرحّل ويؤكد
+  bool get isAuditorController => hasRole('auditor_controller') || hasRole('supervisor');
+
+  /// المدير العام – عرض كامل
+  bool get isGeneralManager => hasRole('general_manager') || hasRole('admin');
+
+  /// مدقق الحسابات – عرض فقط
+  bool get isAccountAuditor => hasRole('account_auditor') || hasRole('viewer');
+
+  /// Can write (all except read-only auditor)
+  bool get canWrite => !isAccountAuditor || isGeneralManager;
+
+  /// Warehouse access (any warehouse role)
+  bool get canSeeWarehouse =>
+      isRawWarehouseKeeper || isFgWarehouseKeeper || isFuelWarehouseKeeper ||
+      isWarehouseAccountant || isAuditorController || isGeneralManager || isAccountAuditor;
+
+  bool canEditUnit(String u) {
+    if (isGeneralManager || isAuditorController) return true;
+    return unitPermissions[u] == true;
+  }
 }
