@@ -1,17 +1,15 @@
-name: Build Ready Installers
+name: Release APK and EXE
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
-    paths:
-      - 'frontend_template/**'
-      - 'scripts/**'
-      - 'installer/**'
-      - 'pubspec.yaml'
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
 
 jobs:
-  build-windows-portable:
+  build-windows-installer:
     runs-on: windows-latest
     defaults:
       run:
@@ -23,7 +21,6 @@ jobs:
         with:
           channel: stable
 
-      # ── Cache pub packages ──────────────────────────────────────────────────
       - name: Cache Flutter pub cache
         uses: actions/cache@v4
         with:
@@ -33,21 +30,9 @@ jobs:
           key: ${{ runner.os }}-pub-${{ hashFiles('frontend_template/pubspec.yaml') }}
           restore-keys: ${{ runner.os }}-pub-
 
-      # ── Cache Gradle ────────────────────────────────────────────────────────
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: ${{ runner.os }}-gradle-
-
       - name: Enable Windows desktop
         run: flutter config --enable-windows-desktop
 
-      # bootstrap_flutter_project.ps1 now runs flutter gen-l10n (fix for
-      # "undefined getter AppLocalizations" compile error on Windows).
       - name: Bootstrap Flutter project
         run: |
           Set-Location scripts
@@ -80,7 +65,7 @@ jobs:
           name: windows-portable
           path: windows-portable.zip
 
-  build-android-release-apk:
+  build-android-apk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +79,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # ── Cache pub packages ──────────────────────────────────────────────────
       - name: Cache Flutter pub cache
         uses: actions/cache@v4
         with:
@@ -102,7 +86,6 @@ jobs:
           key: ${{ runner.os }}-pub-${{ hashFiles('frontend_template/pubspec.yaml') }}
           restore-keys: ${{ runner.os }}-pub-
 
-      # ── Cache Gradle ────────────────────────────────────────────────────────
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -112,15 +95,13 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      # bootstrap_flutter_project.sh now runs flutter gen-l10n (fix for
-      # "undefined getter AppLocalizations" compile error on Android).
       - name: Bootstrap Flutter project
         run: |
           cd scripts
           chmod +x bootstrap_flutter_project.sh
           ./bootstrap_flutter_project.sh ../production_report_app ../frontend_template
 
-      - name: Build Android release APK (split per ABI for smaller size)
+      - name: Build Android release APK (split per ABI)
         run: |
           cd production_report_app
           flutter build apk --release --split-per-abi
@@ -129,3 +110,51 @@ jobs:
         with:
           name: android-apk-release
           path: production_report_app/build/app/outputs/flutter-apk/app-*-release.apk
+
+  publish-release:
+    needs: [ build-windows-installer, build-android-apk ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-setup-exe
+          path: release-assets
+
+      - name: Download Windows portable
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-portable
+          path: release-assets
+
+      - name: Download Android APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk-release
+          path: release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Production Report ${{ github.ref_name }}
+          body: |
+            ## Production Report ${{ github.ref_name }}
+
+            ### Downloads
+            | Platform | File | Description |
+            |----------|------|-------------|
+            | Windows  | `ProductionReportSetup.exe` | Windows installer |
+            | Windows  | `windows-portable.zip` | Portable (no install needed) |
+            | Android  | `app-arm64-v8a-release.apk` | Android APK (64-bit) |
+            | Android  | `app-armeabi-v7a-release.apk` | Android APK (32-bit) |
+            | Android  | `app-x86_64-release.apk` | Android APK (x86-64) |
+
+            ### Backend
+            Deploy the `backend/` folder to Railway (or any Python host).
+            See `README.md` for full setup instructions.
+          files: release-assets/**
+          draft: false
+          prerelease: false

@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 from typing import List, Optional
-from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 
 from app import models
 from app.deps import get_db, get_current_user, require_roles
 from app.schemas import WarehouseOut, InventoryItemOut, InventoryTxnCreate, InventoryTxnOut, StockRow
-from app.inventory import get_warehouse_by_code, get_item_by_code, create_inventory_txn
+from app.inventory import get_warehouse_by_code, get_item_by_code
 
 router = APIRouter(tags=["inventory"])
 

@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Daily Production Report API",
-    version="2.2.0",
+    version="3.0.0",
     lifespan=lifespan,
 )
 
@@ -44,7 +44,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"ok": True, "app": "daily-production-report-api", "version": "2.2.0"}
+    return {"ok": True, "app": "daily-production-report-api", "version": "3.0.0"}
 
 
 app.include_router(auth_router)
