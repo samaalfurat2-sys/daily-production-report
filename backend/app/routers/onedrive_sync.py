@@ -16,7 +16,7 @@ POST /onedrive/sync/all        – run all exports + DB backup in one call
 import io
 import os
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
@@ -24,7 +24,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import models
-from app.deps import get_db, require_role
+from app.deps import get_db, require_roles
 from app import onedrive_client as od
 
 logger = logging.getLogger(__name__)
@@ -297,7 +297,7 @@ def onedrive_setup_complete(body: SetupCompleteRequest):
 
 
 @router.post("/backup/db")
-def backup_database(_: None = Depends(require_role("admin"))):
+def backup_database(_: None = Depends(require_roles("admin"))):
     """
     Upload the SQLite database file to OneDrive/<ONEDRIVE_FOLDER>/backups/.
     Only works when DATABASE_URL points to a local SQLite file.
@@ -324,7 +324,7 @@ def backup_database(_: None = Depends(require_role("admin"))):
     with open(db_path, "rb") as f:
         content = f.read()
 
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"production_app_{ts}.db"
     folder = f"{_FOLDER}/backups"
     web_url = od.upload_file(folder, filename, content, "application/octet-stream")
@@ -335,12 +335,12 @@ def backup_database(_: None = Depends(require_role("admin"))):
 @router.post("/export/shifts")
 def export_shifts_excel(
     db: Session = Depends(get_db),
-    _: None = Depends(require_role("supervisor")),
+    _: None = Depends(require_roles("supervisor")),
 ):
     """Export all shift reports to an Excel file in OneDrive."""
     _require_onedrive()
     content = _build_shifts_excel(db)
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"shifts_{ts}.xlsx"
     folder = f"{_FOLDER}/exports"
     web_url = od.upload_file(
@@ -354,12 +354,12 @@ def export_shifts_excel(
 @router.post("/export/inventory")
 def export_inventory_excel(
     db: Session = Depends(get_db),
-    _: None = Depends(require_role("warehouse_supervisor")),
+    _: None = Depends(require_roles("warehouse_supervisor")),
 ):
     """Export stock on hand + transactions to an Excel file in OneDrive."""
     _require_onedrive()
     content = _build_inventory_excel(db)
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"inventory_{ts}.xlsx"
     folder = f"{_FOLDER}/exports"
     web_url = od.upload_file(
@@ -371,7 +371,7 @@ def export_inventory_excel(
 
 
 @router.get("/files")
-def list_onedrive_files(_: None = Depends(require_role("supervisor"))):
+def list_onedrive_files(_: None = Depends(require_roles("supervisor"))):
     """List files in the OneDrive production reports folder."""
     _require_onedrive()
     files = od.list_files(_FOLDER)
@@ -382,7 +382,7 @@ def list_onedrive_files(_: None = Depends(require_role("supervisor"))):
 def sync_all(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _: None = Depends(require_role("admin")),
+    _: None = Depends(require_roles("admin")),
 ):
     """
     Run all OneDrive exports in one call:
@@ -404,7 +404,7 @@ def sync_all(
             if found:
                 with open(found, "rb") as f:
                     content = f.read()
-                ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                 fname = f"production_app_{ts}.db"
                 url = od.upload_file(f"{_FOLDER}/backups", fname, content)
                 result.db_backup = url
@@ -414,7 +414,7 @@ def sync_all(
     # 2. Shifts Excel
     try:
         content = _build_shifts_excel(db)
-        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         fname = f"shifts_{ts}.xlsx"
         url = od.upload_file(
             f"{_FOLDER}/exports", fname, content,
@@ -427,7 +427,7 @@ def sync_all(
     # 3. Inventory Excel
     try:
         content = _build_inventory_excel(db)
-        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         fname = f"inventory_{ts}.xlsx"
         url = od.upload_file(
             f"{_FOLDER}/exports", fname, content,
