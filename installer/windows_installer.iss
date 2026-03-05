@@ -1,5 +1,5 @@
 #define MyAppName "Production Report"
-#define MyAppVersion "2.1.0"
+#define MyAppVersion "3.0.0"
 ; FIX: Replace "OpenAI" with your actual organisation name.
 #define MyAppPublisher "Your Company Name"
 #define MyAppExeName "production_report_app.exe"
