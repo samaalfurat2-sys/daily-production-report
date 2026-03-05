@@ -16,7 +16,7 @@ POST /onedrive/sync/all        – run all exports + DB backup in one call
 import io
 import os
 import logging
-from datetime import date, datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
@@ -24,7 +24,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import models
-from app.deps import get_db, require_role
+from app.deps import get_db, require_role, get_current_user
 from app import onedrive_client as od
 
 logger = logging.getLogger(__name__)
@@ -97,75 +97,141 @@ def _build_shifts_excel(db: Session) -> bytes:
     # ── Sheet 1: Shift Summary ────────────────────────────────────────────────
     ws = wb.active
     ws.title = "Shifts"
-    header = ["ID", "Date", "Shift", "Unit", "Status", "Operator", "Supervisor",
-              "Created", "Approved"]
+    header = ["ID", "Date", "Shift Code", "Status", "Created At",
+              "Submitted At", "Approved At", "Notes"]
     _excel_header_row(ws, header)
-    shifts = db.query(models.ShiftRecord).order_by(models.ShiftRecord.shift_date.desc()).all()
+    shifts = db.query(models.ShiftRecord).order_by(
+        models.ShiftRecord.report_date.desc()
+    ).all()
     for s in shifts:
         ws.append([
             str(s.id),
-            str(s.shift_date),
+            str(s.report_date),
             s.shift_code,
-            s.unit_code,
             s.status,
-            s.operator.full_name if s.operator else "",
-            s.supervisor.full_name if s.supervisor else "",
             str(s.created_at)[:19] if s.created_at else "",
+            str(s.submitted_at)[:19] if s.submitted_at else "",
             str(s.approved_at)[:19] if s.approved_at else "",
+            s.notes or "",
         ])
     _autofit(ws)
 
     # ── Sheet 2: Blow Reports ─────────────────────────────────────────────────
     ws2 = wb.create_sheet("Blow")
-    blow_header = ["Shift ID", "Date", "Shift", "raw_input", "good_output",
-                   "waste", "waste_pct", "notes"]
+    blow_header = [
+        "Shift ID", "Date", "Shift Code",
+        "Preforms/Carton", "Prev Cartons", "Received Cartons",
+        "Next Cartons", "Product Cartons",
+        "Waste Preforms (pcs)", "Waste Scrap (pcs)", "Waste Bottles (pcs)",
+        "Counter Value",
+    ]
     _excel_header_row(ws2, blow_header)
     for s in shifts:
         if s.blow:
             b = s.blow
-            ws2.append([str(s.id), str(s.shift_date), s.shift_code,
-                        b.raw_input, b.good_output, b.waste,
-                        round(b.waste_pct or 0, 2), b.notes or ""])
+            ws2.append([
+                str(s.id), str(s.report_date), s.shift_code,
+                b.preforms_per_carton,
+                float(b.prev_cartons) if b.prev_cartons is not None else "",
+                float(b.received_cartons) if b.received_cartons is not None else "",
+                float(b.next_cartons) if b.next_cartons is not None else "",
+                float(b.product_cartons) if b.product_cartons is not None else "",
+                b.waste_preforms_pcs or "",
+                b.waste_scrap_pcs or "",
+                b.waste_bottles_pcs or "",
+                b.counter_value or "",
+            ])
     _autofit(ws2)
 
     # ── Sheet 3: Filling Reports ──────────────────────────────────────────────
     ws3 = wb.create_sheet("Filling")
-    fill_header = ["Shift ID", "Date", "Shift", "preforms_used", "bottles_good",
-                   "bottles_waste", "waste_pct", "notes"]
+    fill_header = [
+        "Shift ID", "Date", "Shift Code",
+        "Caps/Carton", "Prev Cartons", "Received Cartons", "Next Cartons",
+        "Waste Caps (pcs)", "Waste Scrap (pcs)", "Waste Bottles (pcs)",
+        "Counter Value",
+    ]
     _excel_header_row(ws3, fill_header)
     for s in shifts:
         if s.filling:
             f = s.filling
-            ws3.append([str(s.id), str(s.shift_date), s.shift_code,
-                        f.preforms_used, f.bottles_good, f.bottles_waste,
-                        round(f.waste_pct or 0, 2), f.notes or ""])
+            ws3.append([
+                str(s.id), str(s.report_date), s.shift_code,
+                f.caps_per_carton,
+                float(f.prev_cartons) if f.prev_cartons is not None else "",
+                float(f.received_cartons) if f.received_cartons is not None else "",
+                float(f.next_cartons) if f.next_cartons is not None else "",
+                f.waste_caps_pcs or "",
+                f.waste_scrap_pcs or "",
+                f.waste_bottles_pcs or "",
+                f.counter_value or "",
+            ])
     _autofit(ws3)
 
     # ── Sheet 4: Label Reports ────────────────────────────────────────────────
     ws4 = wb.create_sheet("Label")
-    lbl_header = ["Shift ID", "Date", "Shift", "bottles_in", "labelled_good",
-                  "label_waste", "waste_pct", "notes"]
+    lbl_header = [
+        "Shift ID", "Date", "Shift Code",
+        "Labels/Roll", "Prev Rolls", "Received Rolls", "Next Rolls",
+        "Waste (grams)",
+    ]
     _excel_header_row(ws4, lbl_header)
     for s in shifts:
         if s.label:
             l = s.label
-            ws4.append([str(s.id), str(s.shift_date), s.shift_code,
-                        l.bottles_in, l.labelled_good, l.label_waste,
-                        round(l.waste_pct or 0, 2), l.notes or ""])
+            ws4.append([
+                str(s.id), str(s.report_date), s.shift_code,
+                l.labels_per_roll,
+                float(l.prev_rolls) if l.prev_rolls is not None else "",
+                float(l.received_rolls) if l.received_rolls is not None else "",
+                float(l.next_rolls) if l.next_rolls is not None else "",
+                float(l.waste_grams) if l.waste_grams is not None else "",
+            ])
     _autofit(ws4)
 
-    # ── Sheet 5: Diesel Reports ───────────────────────────────────────────────
-    ws5 = wb.create_sheet("Diesel")
-    die_header = ["Shift ID", "Date", "Shift", "opening_meter", "closing_meter",
-                  "consumption_litres", "notes"]
-    _excel_header_row(ws5, die_header)
+    # ── Sheet 5: Shrink Reports ───────────────────────────────────────────────
+    ws5 = wb.create_sheet("Shrink")
+    shrink_header = [
+        "Shift ID", "Date", "Shift Code",
+        "kg/Roll", "Prev Rolls", "Received Rolls", "Next Rolls",
+        "Waste (kg)", "Screen Counter",
+    ]
+    _excel_header_row(ws5, shrink_header)
+    for s in shifts:
+        if s.shrink:
+            sh = s.shrink
+            ws5.append([
+                str(s.id), str(s.report_date), s.shift_code,
+                float(sh.kg_per_roll) if sh.kg_per_roll is not None else "",
+                float(sh.prev_rolls) if sh.prev_rolls is not None else "",
+                float(sh.received_rolls) if sh.received_rolls is not None else "",
+                float(sh.next_rolls) if sh.next_rolls is not None else "",
+                float(sh.waste_kg) if sh.waste_kg is not None else "",
+                sh.screen_counter or "",
+            ])
+    _autofit(ws5)
+
+    # ── Sheet 6: Diesel Reports ───────────────────────────────────────────────
+    ws6 = wb.create_sheet("Diesel")
+    die_header = [
+        "Shift ID", "Date", "Shift Code",
+        "Gen1 Total Reading", "Gen1 Consumed",
+        "Gen2 Total Reading", "Gen2 Consumed",
+        "Main Tank Received",
+    ]
+    _excel_header_row(ws6, die_header)
     for s in shifts:
         if s.diesel:
             d = s.diesel
-            ws5.append([str(s.id), str(s.shift_date), s.shift_code,
-                        d.opening_meter, d.closing_meter,
-                        d.consumption_litres, d.notes or ""])
-    _autofit(ws5)
+            ws6.append([
+                str(s.id), str(s.report_date), s.shift_code,
+                float(d.generator1_total_reading) if d.generator1_total_reading is not None else "",
+                float(d.generator1_consumed) if d.generator1_consumed is not None else "",
+                float(d.generator2_total_reading) if d.generator2_total_reading is not None else "",
+                float(d.generator2_consumed) if d.generator2_consumed is not None else "",
+                float(d.main_tank_received) if d.main_tank_received is not None else "",
+            ])
+    _autofit(ws6)
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -184,45 +250,76 @@ def _build_inventory_excel(db: Session) -> bytes:
 
     wb = openpyxl.Workbook()
 
-    # ── Stock on hand ─────────────────────────────────────────────────────────
+    # ── Stock on hand (computed from transactions) ────────────────────────────
     ws = wb.active
     ws.title = "Stock"
-    _excel_header_row(ws, ["Warehouse", "Item Code", "Item Name", "Unit",
-                            "Balance Qty", "Last Updated"])
-    warehouses = db.query(models.Warehouse).all()
-    for wh in warehouses:
-        for item in wh.items:
-            balance = sum(
-                (t.qty if t.direction == "in" else -t.qty)
-                for t in item.transactions
-            )
-            last_tx = max(
-                (t.created_at for t in item.transactions if t.created_at),
-                default=None,
-            )
-            ws.append([wh.name, item.code, item.name, item.unit,
-                       round(balance, 3),
-                       str(last_tx)[:19] if last_tx else ""])
+    _excel_header_row(ws, ["Warehouse Code", "Warehouse Name", "Item Code",
+                            "Item Name", "UOM", "Balance Qty"])
+
+    # Single query: fetch all transactions joined with warehouse + item info,
+    # then compute balances in memory to avoid N×M per-row queries.
+    all_txns = (
+        db.query(models.InventoryTransaction)
+        .join(models.Warehouse,
+              models.InventoryTransaction.warehouse_id == models.Warehouse.id)
+        .join(models.InventoryItem,
+              models.InventoryTransaction.item_id == models.InventoryItem.id)
+        .filter(
+            models.Warehouse.is_active,
+            models.InventoryItem.is_active,
+        )
+        .all()
+    )
+
+    # Accumulate balance per (warehouse_id, item_id) pair.
+    # RECEIVE and ADJUST are positive; ISSUE is negative.
+    _POSITIVE_TYPES = {"RECEIVE", "ADJUST"}
+    balances: dict = {}
+    wh_meta: dict = {}
+    item_meta: dict = {}
+    for t in all_txns:
+        key = (t.warehouse_id, t.item_id)
+        sign = 1.0 if t.txn_type in _POSITIVE_TYPES else -1.0
+        balances[key] = balances.get(key, 0.0) + sign * float(t.qty)
+        wh_meta[t.warehouse_id] = t.warehouse
+        item_meta[t.item_id] = t.item
+
+    for (wh_id, item_id), balance in sorted(
+        balances.items(), key=lambda kv: (str(kv[0][0]), str(kv[0][1]))
+    ):
+        wh = wh_meta[wh_id]
+        item = item_meta[item_id]
+        ws.append([wh.code, wh.name_en, item.code, item.name_en,
+                   item.uom, round(balance, 3)])
     _autofit(ws)
 
     # ── Transactions ──────────────────────────────────────────────────────────
     ws2 = wb.create_sheet("Transactions")
-    _excel_header_row(ws2, ["Date", "Warehouse", "Item", "Direction",
-                             "Qty", "Reference", "Notes", "Clerk"])
-    txns = (db.query(models.InventoryTransaction)
-            .order_by(models.InventoryTransaction.created_at.desc())
-            .limit(2000)
-            .all())
+    _excel_header_row(ws2, ["Date", "Warehouse Code", "Warehouse Name",
+                             "Item Code", "Item Name", "Type",
+                             "Qty", "Reference Type", "Reference ID",
+                             "Note", "Created At"])
+    txns = (
+        db.query(models.InventoryTransaction)
+        .order_by(models.InventoryTransaction.created_at.desc())
+        .limit(2000)
+        .all()
+    )
     for t in txns:
+        wh = t.warehouse
+        item = t.item
         ws2.append([
+            str(t.txn_date),
+            wh.code if wh else "",
+            wh.name_en if wh else "",
+            item.code if item else "",
+            item.name_en if item else "",
+            t.txn_type,
+            float(t.qty),
+            t.reference_type or "",
+            t.reference_id or "",
+            t.note or "",
             str(t.created_at)[:19] if t.created_at else "",
-            t.item.warehouse.name if t.item and t.item.warehouse else "",
-            t.item.name if t.item else "",
-            t.direction,
-            t.qty,
-            t.reference or "",
-            t.notes or "",
-            t.clerk.full_name if t.clerk else "",
         ])
     _autofit(ws2)
 
@@ -324,7 +421,7 @@ def backup_database(_: None = Depends(require_role("admin"))):
     with open(db_path, "rb") as f:
         content = f.read()
 
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"production_app_{ts}.db"
     folder = f"{_FOLDER}/backups"
     web_url = od.upload_file(folder, filename, content, "application/octet-stream")
@@ -340,7 +437,7 @@ def export_shifts_excel(
     """Export all shift reports to an Excel file in OneDrive."""
     _require_onedrive()
     content = _build_shifts_excel(db)
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"shifts_{ts}.xlsx"
     folder = f"{_FOLDER}/exports"
     web_url = od.upload_file(
@@ -359,7 +456,7 @@ def export_inventory_excel(
     """Export stock on hand + transactions to an Excel file in OneDrive."""
     _require_onedrive()
     content = _build_inventory_excel(db)
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"inventory_{ts}.xlsx"
     folder = f"{_FOLDER}/exports"
     web_url = od.upload_file(
@@ -404,7 +501,7 @@ def sync_all(
             if found:
                 with open(found, "rb") as f:
                     content = f.read()
-                ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                 fname = f"production_app_{ts}.db"
                 url = od.upload_file(f"{_FOLDER}/backups", fname, content)
                 result.db_backup = url
@@ -414,7 +511,7 @@ def sync_all(
     # 2. Shifts Excel
     try:
         content = _build_shifts_excel(db)
-        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         fname = f"shifts_{ts}.xlsx"
         url = od.upload_file(
             f"{_FOLDER}/exports", fname, content,
@@ -427,7 +524,7 @@ def sync_all(
     # 3. Inventory Excel
     try:
         content = _build_inventory_excel(db)
-        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         fname = f"inventory_{ts}.xlsx"
         url = od.upload_file(
             f"{_FOLDER}/exports", fname, content,

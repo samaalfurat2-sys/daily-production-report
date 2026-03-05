@@ -55,6 +55,11 @@ def require_roles(*required: str):
     return _checker
 
 
+def require_role(role: str):
+    """Single-role shorthand — identical to require_roles(role)."""
+    return require_roles(role)
+
+
 def require_unit_edit(unit_code: str):
     def _checker(db: Session = Depends(get_db), user: models.AppUser = Depends(get_current_user)) -> models.AppUser:
         roles = user_roles(user)
