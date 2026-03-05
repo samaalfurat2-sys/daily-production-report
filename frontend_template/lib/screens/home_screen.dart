@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:production_report_app/gen_l10n/app_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
@@ -7,13 +7,16 @@ import 'dashboard_screen.dart';
 import 'shift_list_screen.dart';
 import 'approvals_screen.dart';
 import 'warehouse_screen.dart';
+import 'settings_screen.dart';
+// New role-specific screens
 import 'raw_warehouse_screen.dart';
+import 'production_supervisor_screen.dart';
 import 'fg_warehouse_screen.dart';
 import 'fuel_warehouse_screen.dart';
 import 'accountant_screen.dart';
 import 'controller_screen.dart';
-import 'settings_screen.dart';
-import 'onedrive_sync_screen.dart';
+import 'manager_screen.dart';
+import '../widgets/sync_status_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,104 +31,141 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    final app = context.watch<AppState>();
+    final appState = context.watch<AppState>();
 
-    final tabs = <Widget>[];
-    final items = <BottomNavigationBarItem>[];
+    // Build role-specific navigation tabs ─────────────────────────────────────
+    final tabs = <_NavTab>[];
 
-    void add(Widget screen, IconData icon, String label) {
-      tabs.add(screen);
-      items.add(BottomNavigationBarItem(icon: Icon(icon), label: label));
+    // ── ADMIN / GENERAL MANAGER: full dashboard + all tabs ──────────────────
+    if (appState.isAdmin || appState.isGeneralManager) {
+      tabs.addAll([
+        _NavTab(Icons.dashboard_outlined,     t.dashboard,       const DashboardScreen()),
+        _NavTab(Icons.fact_check_outlined,    t.shifts,          const ShiftListScreen()),
+        _NavTab(Icons.verified_outlined,      t.approvals,       const ApprovalsScreen()),
+        _NavTab(Icons.warehouse_outlined,     t.warehouses,      const WarehouseScreen()),
+        _NavTab(Icons.assessment_outlined,    t.allOperations,   const ManagerScreen()),
+        _NavTab(Icons.settings_outlined,      t.settings,        const SettingsScreen()),
+      ]);
     }
 
-    // ── المدير العام / admin – يرى كل شيء ───────────────────────────────────
-    if (app.isGeneralManager) {
-      add(const DashboardScreen(), Icons.dashboard_outlined, t.dashboard);
-      add(const ShiftListScreen(), Icons.fact_check_outlined, t.shifts);
-      add(const ApprovalsScreen(), Icons.verified_outlined, t.approvals);
-      add(const WarehouseScreen(), Icons.warehouse_outlined, t.warehouses);
-      add(const AccountantScreen(), Icons.account_balance_outlined, t.accountant);
-      add(const ControllerScreen(), Icons.verified_user_outlined, t.controller);
-      add(const OneDriveSyncScreen(), Icons.cloud_sync_outlined, t.oneDrive);
-      add(const SettingsScreen(), Icons.settings_outlined, t.settings);
-      return _build(tabs, items);
+    // ── AUDITOR: read-only view of all operations ────────────────────────────
+    else if (appState.isAuditor) {
+      tabs.addAll([
+        _NavTab(Icons.assessment_outlined,    t.auditorDashboard,  const ManagerScreen()),
+        _NavTab(Icons.settings_outlined,      t.settings,          const SettingsScreen()),
+      ]);
     }
 
-    // ── مدقق الحسابات – عرض فقط ─────────────────────────────────────────────
-    if (app.isAccountAuditor) {
-      add(const DashboardScreen(), Icons.dashboard_outlined, t.dashboard);
-      add(const ShiftListScreen(), Icons.fact_check_outlined, t.shifts);
-      add(const WarehouseScreen(), Icons.warehouse_outlined, t.warehouses);
-      add(const AccountantScreen(), Icons.account_balance_outlined, t.accountant);
-      add(const SettingsScreen(), Icons.settings_outlined, t.settings);
-      return _build(tabs, items);
+    // ── ACCOUNTS CONTROLLER: approvals + post warehouse transactions ─────────
+    else if (appState.isController) {
+      tabs.addAll([
+        _NavTab(Icons.verified_outlined,      t.approvals,           const ApprovalsScreen()),
+        _NavTab(Icons.post_add_outlined,      t.controllerDashboard, const ControllerScreen()),
+        _NavTab(Icons.warehouse_outlined,     t.allWarehouses,       const WarehouseScreen()),
+        _NavTab(Icons.settings_outlined,      t.settings,            const SettingsScreen()),
+      ]);
     }
 
-    // ── مراقب الحسابات – يرحّل ويؤكد ────────────────────────────────────────
-    if (app.isAuditorController) {
-      add(const ControllerScreen(), Icons.verified_user_outlined, t.controller);
-      add(const DashboardScreen(), Icons.dashboard_outlined, t.dashboard);
-      add(const ShiftListScreen(), Icons.fact_check_outlined, t.shifts);
-      add(const WarehouseScreen(), Icons.warehouse_outlined, t.warehouses);
-      add(const SettingsScreen(), Icons.settings_outlined, t.settings);
-      return _build(tabs, items);
+    // ── WH ACCOUNTANT: acknowledge all pending warehouse transactions ────────
+    else if (appState.isWhAccountant) {
+      tabs.addAll([
+        _NavTab(Icons.pending_actions_outlined, t.accountantDashboard, const AccountantScreen()),
+        _NavTab(Icons.warehouse_outlined,       t.allWarehouses,       const WarehouseScreen()),
+        _NavTab(Icons.fact_check_outlined,      t.shiftReports,        const ShiftListScreen()),
+        _NavTab(Icons.settings_outlined,        t.settings,            const SettingsScreen()),
+      ]);
     }
 
-    // ── محاسب المخازن ─────────────────────────────────────────────────────────
-    if (app.isWarehouseAccountant) {
-      add(const AccountantScreen(), Icons.account_balance_outlined, t.accountant);
-      add(const SettingsScreen(), Icons.settings_outlined, t.settings);
-      return _build(tabs, items);
+    // ── PRODUCTION SUPERVISOR: shift entry + transfer PROD→FG ─────────────────
+    else if (appState.isProdSupervisor) {
+      tabs.addAll([
+        _NavTab(Icons.engineering_outlined,   t.productionSupervisorDashboard, const ProductionSupervisorScreen()),
+        _NavTab(Icons.settings_outlined,      t.settings,                      const SettingsScreen()),
+      ]);
     }
 
-    // ── أمين مخزن المواد الخام ───────────────────────────────────────────────
-    if (app.isRawWarehouseKeeper) {
-      add(const RawWarehouseScreen(), Icons.inventory_2_outlined, t.rawWarehouse);
-      add(const SettingsScreen(), Icons.settings_outlined, t.settings);
-      return _build(tabs, items);
+    // ── LEGACY SUPERVISOR: shift entry + approvals ────────────────────────────
+    else if (appState.isSupervisor) {
+      tabs.addAll([
+        _NavTab(Icons.fact_check_outlined,    t.shifts,              const ShiftListScreen()),
+        _NavTab(Icons.warehouse_outlined,     t.warehouseMovements,  const WarehouseScreen()),
+        if (appState.canApproveShifts)
+          _NavTab(Icons.verified_outlined,    t.approvals,           const ApprovalsScreen()),
+        _NavTab(Icons.settings_outlined,      t.settings,            const SettingsScreen()),
+      ]);
     }
 
-    // ── مشرف صالة الإنتاج ────────────────────────────────────────────────────
-    if (app.isProductionSupervisor) {
-      add(const DashboardScreen(), Icons.dashboard_outlined, t.dashboard);
-      add(const ShiftListScreen(), Icons.fact_check_outlined, t.shifts);
-      add(const SettingsScreen(), Icons.settings_outlined, t.settings);
-      return _build(tabs, items);
+    // ── RAW WAREHOUSE KEEPER ──────────────────────────────────────────────────
+    else if (appState.isRawWhKeeper) {
+      tabs.addAll([
+        _NavTab(Icons.inventory_outlined,       t.rawWarehouse,       const RawWarehouseScreen()),
+        _NavTab(Icons.settings_outlined,        t.settings,           const SettingsScreen()),
+      ]);
     }
 
-    // ── أمين مخزن المنتج الجاهز ──────────────────────────────────────────────
-    if (app.isFgWarehouseKeeper) {
-      add(const FgWarehouseScreen(), Icons.local_shipping_outlined, t.fgWarehouse);
-      add(const SettingsScreen(), Icons.settings_outlined, t.settings);
-      return _build(tabs, items);
+    // ── FINISHED GOODS WAREHOUSE KEEPER ──────────────────────────────────────
+    else if (appState.isFgWhKeeper) {
+      tabs.addAll([
+        _NavTab(Icons.inventory_2_outlined,     t.fgWarehouse,        const FgWarehouseScreen()),
+        _NavTab(Icons.settings_outlined,        t.settings,           const SettingsScreen()),
+      ]);
     }
 
-    // ── أمين مخزن المحروقات ───────────────────────────────────────────────────
-    if (app.isFuelWarehouseKeeper) {
-      add(const FuelWarehouseScreen(), Icons.local_gas_station_outlined, t.fuelWarehouse);
-      add(const SettingsScreen(), Icons.settings_outlined, t.settings);
-      return _build(tabs, items);
+    // ── FUEL WAREHOUSE KEEPER ─────────────────────────────────────────────────
+    else if (appState.isFuelWhKeeper) {
+      tabs.addAll([
+        _NavTab(Icons.local_gas_station_outlined, t.fuelWarehouse,    const FuelWarehouseScreen()),
+        _NavTab(Icons.settings_outlined,          t.settings,         const SettingsScreen()),
+      ]);
     }
 
-    // ── fallback: لوحة التحكم + إعدادات ─────────────────────────────────────
-    add(const DashboardScreen(), Icons.dashboard_outlined, t.dashboard);
-    add(const SettingsScreen(), Icons.settings_outlined, t.settings);
-    return _build(tabs, items);
-  }
+    // ── OPERATOR (legacy) ────────────────────────────────────────────────────
+    else if (appState.isOperator) {
+      tabs.addAll([
+        _NavTab(Icons.fact_check_outlined,    t.shifts,         const ShiftListScreen()),
+        _NavTab(Icons.settings_outlined,      t.settings,       const SettingsScreen()),
+      ]);
+    }
 
-  Widget _build(List<Widget> tabs, List<BottomNavigationBarItem> items) {
-    final safeIndex = _index < tabs.length ? _index : 0;
+    // ── VIEWER / FALLBACK ─────────────────────────────────────────────────────
+    else {
+      tabs.addAll([
+        _NavTab(Icons.dashboard_outlined,  t.dashboard,   const DashboardScreen()),
+        _NavTab(Icons.settings_outlined,   t.settings,    const SettingsScreen()),
+      ]);
+    }
+
+    if (_index >= tabs.length) _index = 0;
+
     return Scaffold(
-      body: SafeArea(child: tabs[safeIndex]),
-      bottomNavigationBar: items.length > 1
+      body: Column(
+        children: [
+          const SyncStatusBar(),
+          Expanded(child: SafeArea(child: tabs[_index].screen)),
+        ],
+      ),
+      bottomNavigationBar: tabs.length > 1
           ? BottomNavigationBar(
-              currentIndex: safeIndex,
+              currentIndex: _index,
               onTap: (i) => setState(() => _index = i),
-              items: items,
               type: BottomNavigationBarType.fixed,
-              selectedItemColor: Theme.of(context).colorScheme.primary,
+              items: tabs
+                  .map((t) => BottomNavigationBarItem(
+                        icon: Icon(t.icon),
+                        label: t.label,
+                      ))
+                  .toList(),
             )
           : null,
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NavTab {
+  const _NavTab(this.icon, this.label, this.screen);
+  final IconData icon;
+  final String label;
+  final Widget screen;
 }

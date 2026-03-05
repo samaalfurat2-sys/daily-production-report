@@ -124,3 +124,27 @@ Provides `client` fixture with isolated per-test database; no external DB requir
 
 The single remaining warning (`passlib/crypt` deprecation) is inside the `passlib`
 third-party library and does not affect functionality.
+
+---
+
+## Session Build Fixes — v2.11.0 (2026-03-05)
+
+### Gradle / Android Build Fixes
+1. **Temurin JDK 17** installed; JAVA_HOME configured
+2. **Kotlin version strings** corrupted (`1.9.101.9.10`) fixed across all pub-cache packages
+3. **workmanager-0.5.2** `jvmTarget` changed from `'1.8'` → `'17'`
+4. **Android Gradle Plugin** 8.1.0 / Kotlin 1.9.10 / Gradle 8.3 confirmed working
+5. **Swap memory** (3 GB) enabled to handle Gradle memory pressure
+
+### Dart Source Fixes
+6. **api_client.dart** — misplaced `}` moved so `postTransaction`, `getSyncDelta`, `postSyncBatch`, `getSyncStatus` are inside the `ApiClient` class
+7. **dashboard_screen.dart** — removed stray double comma `),,`
+8. **warehouse_screen.dart** — removed stray double comma `),,`
+9. **shift_list_screen.dart** — added missing `bool _isOfflineFallback = false;` field
+10. **approvals_screen.dart** — added missing `bool _isOfflineFallback = false;` field
+11. **settings_screen.dart** — fixed `SyncConflictDialog.show()` call (added `rejected:` param); fixed `syncConflictSubtitle` invocation
+12. **shift_detail_screen.dart** — moved `payload` declaration before `try` block; fixed closing brackets for `Expanded`/`Column`/`Scaffold`
+
+### Result
+- APK built successfully: `app-release.apk` (25 MB), signed with production.jks (RSA 2048-bit)
+- Signature verified: v1 ✓  v2 ✓

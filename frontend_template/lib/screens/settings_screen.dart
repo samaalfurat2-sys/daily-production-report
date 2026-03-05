@@ -1,58 +1,138 @@
 import 'package:flutter/material.dart';
-import 'package:production_report_app/gen_l10n/app_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
-import '../app_state.dart';
 
-class SettingsScreen extends StatelessWidget {
+import '../app_state.dart';
+import '../services/sync_service.dart';
+import '../widgets/sync_status_bar.dart';
+import '../widgets/sync_conflict_dialog.dart';
+
+// FIX: Converted from StatelessWidget to StatefulWidget so that
+// TextEditingController is properly initialised once and disposed
+// when the widget leaves the tree. Previously the controller was
+// re-created on every build() call, causing a memory leak.
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  late final TextEditingController _serverController;
+
+  @override
+  void initState() {
+    super.initState();
+    final appState = context.read<AppState>();
+    _serverController = TextEditingController(text: appState.serverUrl);
+  }
+
+  @override
+  void dispose() {
+    _serverController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    final app = context.watch<AppState>();
-    final rtl = app.locale?.languageCode == 'ar';
-    return Directionality(
-      textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
-      child: Scaffold(appBar: AppBar(title: Text(t.settings)), body: ListView(children: [
-        ListTile(leading: const Icon(Icons.language), title: Text(t.language)),
-        RadioListTile<String>(title: Text(t.english), value: 'en', groupValue: app.locale?.languageCode ?? 'en', onChanged: (v) => app.setLocale(Locale(v!))),
-        RadioListTile<String>(title: Text(t.arabic), value: 'ar', groupValue: app.locale?.languageCode ?? 'en', onChanged: (v) => app.setLocale(Locale(v!))),
-        const Divider(),
-        ListTile(
-          leading: Icon(app.isConnectedToOneDrive ? Icons.cloud_done : Icons.cloud_off, color: app.isConnectedToOneDrive ? Colors.green : Colors.grey),
-          title: const Text('OneDrive'),
-          subtitle: Text(app.isConnectedToOneDrive ? (rtl ? 'متصل' : 'Connected') : (rtl ? 'غير متصل' : 'Not connected')),
-        ),
-        if (app.isConnectedToOneDrive) ...[
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: Text(rtl ? 'حساب Microsoft' : 'Microsoft Account'),
-            subtitle: FutureBuilder<Map<String,dynamic>>(
-              future: app.graph.getMe(),
-              builder: (_, s) => Text(s.data?['userPrincipalName'] ?? s.data?['displayName'] ?? '...'),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.link_off, color: Colors.red),
-            title: Text(rtl ? 'قطع الاتصال' : 'Disconnect', style: const TextStyle(color: Colors.red)),
-            onTap: () => _disc(context, app, rtl),
-          ),
-        ],
-        const Divider(),
-        ListTile(leading: const Icon(Icons.logout), title: Text(t.signOut), onTap: () => app.logout()),
-      ])),
-    );
-  }
+    final appState = context.watch<AppState>();
 
-  Future<void> _disc(BuildContext ctx, AppState app, bool ar) async {
-    final ok = await showDialog<bool>(context: ctx, builder: (c) => AlertDialog(
-      title: Text(ar ? 'قطع اتصال OneDrive؟' : 'Disconnect OneDrive?'),
-      content: Text(ar ? 'ستحتاج إعادة الربط للوصول للبيانات.' : 'You will need to reconnect to access data.'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: Text(ar ? 'إلغاء' : 'Cancel')),
-        TextButton(onPressed: () => Navigator.pop(c, true), child: Text(ar ? 'قطع' : 'Disconnect', style: const TextStyle(color: Colors.red))),
-      ],
-    ));
-    if (ok == true) { await app.disconnectOneDrive(); await app.logout(); }
+    return Scaffold(
+      appBar: AppBar(title: Text(t.settings)),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ListView(
+          children: [
+            ListTile(title: Text(t.language)),
+            SegmentedButton<Locale>(
+              segments: [
+                ButtonSegment(value: const Locale('ar'), label: Text(t.arabic)),
+                ButtonSegment(value: const Locale('en'), label: Text(t.english)),
+              ],
+              selected: {appState.locale ?? const Locale('ar')},
+              onSelectionChanged: (s) => appState.setLocale(s.first),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _serverController,
+              decoration: InputDecoration(labelText: t.serverUrl, border: const OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => appState.setServerUrl(_serverController.text),
+              child: Text(t.save),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () => appState.logout(),
+              icon: const Icon(Icons.logout),
+              label: Text(t.signOut),
+            ),
+            const SizedBox(height: 24),
+            // ── Sync info ──────────────────────────────────────────────────
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.sync),
+              title: Text(t.syncNow),
+              subtitle: Builder(builder: (ctx) {
+                final sync = ctx.watch<SyncService>();
+                final lastSync = sync.lastSyncAt;
+                if (lastSync == null) return Text(t.syncOffline);
+                return Text('${t.syncUpToDate} — ${lastSync.toLocal().toIso8601String().substring(0,16)}');
+              }),
+              trailing: Builder(builder: (ctx) {
+                final sync = ctx.watch<SyncService>();
+                return sync.isSyncing
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                    : IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () => SyncService.instance.syncNow(),
+                      );
+              }),
+            ),
+            const SyncStatusBar(),
+            // ── Conflict count tile ────────────────────────────────────────
+            Builder(builder: (ctx) {
+              final sync = ctx.watch<SyncService>();
+              final count = sync.rejectedItems.length;
+              if (count == 0) return const SizedBox.shrink();
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.warning_amber_rounded,
+                    color: Colors.deepOrange),
+                title: Text(
+                  '${t.syncConflictTitle} ($count)',
+                  style: const TextStyle(
+                      color: Colors.deepOrange, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(t.syncConflictSubtitle(sync.rejectedItems.length.toString())),
+                trailing: TextButton(
+                  onPressed: () => SyncConflictDialog.show(ctx, rejected: sync.rejectedItems),
+                  child: Text(t.open),
+                ),
+              );
+            }),
+            // ── Pending shift unit updates tile ───────────────────────────
+            Builder(builder: (ctx) {
+              final sync = SyncService.instance;
+              final count = sync.pendingShiftUpdateCount;
+              if (count == 0) return const SizedBox.shrink();
+              return ListTile(
+                leading: const Icon(Icons.edit_note, color: Colors.amber),
+                title: Text(
+                  '${t.syncShiftPending(count)}',
+                  style: const TextStyle(
+                      color: Colors.amber, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text('Will sync automatically when online'),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
   }
 }

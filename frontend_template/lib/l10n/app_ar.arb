@@ -66,37 +66,112 @@
   "quantity": "الكمية",
   "transactionType": "نوع الحركة",
   "noPendingApprovals": "لا توجد موافقات معلقة",
-  "oneDrive": "ون درايف",
-  "oneDriveSync": "مزامنة ون درايف",
-  "connectOneDrive": "ربط ون درايف",
-  "syncAll": "مزامنة الكل",
-  "exportShifts": "تصدير الورديات",
-  "exportInventory": "تصدير المخزون",
-  "backupDatabase": "نسخة احتياطية",
-  "connected": "متصل",
-  "notConnected": "غير متصل",
   "rawWarehouse": "مخزن المواد الخام",
   "fgWarehouse": "مخزن المنتج الجاهز",
   "fuelWarehouse": "مخزن المحروقات",
   "productionHall": "صالة الإنتاج",
-  "accountant": "محاسب المخازن",
-  "controller": "مراقب الحسابات",
-  "generalManager": "المدير العام",
-  "accountAuditor": "مدقق الحسابات",
-  "receiveItems": "استلام مواد",
-  "transferItems": "تحويل مواد",
-  "fuelLog": "سجل الوقود",
-  "issueInvoice": "أمر صرف",
-  "pendingItems": "معلق",
-  "confirmedItems": "مؤكد",
-  "postedItems": "مرحّل",
-  "confirmReceive": "تأكيد الاستلام",
-  "postEntry": "ترحيل",
-  "approveEntry": "اعتماد",
-  "generator1Fuel": "وقود المولد 1",
-  "generator2Fuel": "وقود المولد 2",
-  "receivedFuel": "الوقود الوارد",
-  "totalIssued": "إجمالي المصروف",
-  "invoiceNo": "رقم الفاتورة",
-  "customer": "العميل"
+  "receiveGoods": "استلام بضاعة",
+  "transferToProduction": "تحويل إلى صالة الإنتاج",
+  "transferToFG": "تحويل إلى مخزن المنتج الجاهز",
+  "issueGoods": "صرف بضاعة",
+  "receiveFinished": "استلام منتج جاهز",
+  "issueFuel": "صرف وقود",
+  "receiveFuel": "استلام وقود",
+  "generator": "مولد كهرباء",
+  "pendingTransactions": "حركات في الانتظار",
+  "acknowledgedTransactions": "حركات مؤكدة",
+  "postedTransactions": "حركات مرحّلة",
+  "acknowledge": "تأكيد",
+  "post": "ترحيل",
+  "accountantDashboard": "محاسب المخازن",
+  "controllerDashboard": "مراقب الحسابات",
+  "managerDashboard": "المدير العام",
+  "auditorDashboard": "مدقق الحسابات",
+  "allOperations": "جميع العمليات",
+  "sourceWarehouse": "مخزن المصدر",
+  "targetWarehouse": "مخزن الوجهة",
+  "transferQty": "الكمية المحوّلة",
+  "invoiceRef": "رقم الفاتورة",
+  "txnPending": "انتظار",
+  "txnAcknowledged": "مؤكد",
+  "txnPosted": "مرحّل",
+  "noTransactions": "لا توجد حركات",
+  "confirmAcknowledge": "هل تريد تأكيد هذه الحركة؟",
+  "confirmPost": "هل تريد ترحيل هذه الحركة؟",
+  "yes": "نعم",
+  "no": "لا",
+  "error": "خطأ",
+  "success": "تمت العملية بنجاح",
+  "loading": "جاري التحميل...",
+  "date": "التاريخ",
+  "type": "النوع",
+  "myWarehouse": "مخزني",
+  "allWarehouses": "كل المخازن",
+  "shiftReports": "تقارير الورديات",
+  "warehouseMovements": "تحريك المخزون",
+  "productionSupervisorDashboard": "مشرف صالة الإنتاج",
+  "receiveFromRM": "استلام من مخزن الخام",
+  "shiftCreateButton": "إنشاء وردية جديدة",
+  "shiftDate": "تاريخ الوردية",
+  "shiftCodeLabel": "رمز الوردية",
+  "stockReport": "تقرير الرصيد",
+  "allTransactions": "جميع الحركات",
+  "transferPair": "حركة تحويل",
+  "receiveTitle": "استلام",
+  "issueTitle": "صرف",
+  "syncOffline": "غير متصل بالشبكة",
+  "syncSyncing": "جارٍ المزامنة…",
+  "syncUpToDate": "محدّث",
+  "syncPendingCount": "{count} عملية في الانتظار",
+  "@syncPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncJustNow": "للتو",
+  "syncMinutesAgo": "منذ {n} دقيقة",
+  "@syncMinutesAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "syncHoursAgo": "منذ {n} ساعة",
+  "@syncHoursAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "syncNow": "مزامنة الآن",
+  "syncError": "خطأ في المزامنة",
+  "savedOffline": "تم الحفظ محلياً — سيتم المزامنة عند الاتصال",
+  "noData": "لا توجد بيانات",
+  "syncConflictTitle": "تعارضات المزامنة",
+  "syncConflictSubtitle": "{count} عنصر لم يتم مزامنته",
+  "syncConflictResolved": "تم حل جميع التعارضات",
+  "syncConflictUnknownError": "خطأ غير معروف",
+  "syncConflictRetry": "إعادة المحاولة",
+  "syncConflictDiscard": "تجاهل",
+  "close": "إغلاق",
+  "dateFrom": "من تاريخ",
+  "dateTo": "إلى تاريخ",
+  "filterByDate": "تصفية حسب التاريخ",
+  "clearFilter": "مسح التصفية",
+  "syncShiftPending": "تحديث {count} وحدة وردية في الانتظار",
+  "@syncShiftPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "submitRequiresConnection": "لا يمكن تقديم الوردية في وضع عدم الاتصال",
+  "approveRequiresConnection": "لا يمكن اعتماد الوردية في وضع عدم الاتصال",
+  "lockRequiresConnection": "لا يمكن قفل الوردية في وضع عدم الاتصال",
+  "offlineCachedData": "عرض بيانات مخزنة — اتصل للتحديث"
 }

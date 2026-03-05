@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
-import 'package:production_report_app/gen_l10n/app_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../widgets/sync_status_bar.dart';
+import '../services/sync_service.dart';
 
 class ShiftDetailScreen extends StatefulWidget {
   const ShiftDetailScreen({super.key, required this.shiftId});
@@ -46,7 +48,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
     setState(() { _loading = true; _error = null; });
     try {
       final appState = context.read<AppState>();
-      final data = await appState.db.getShift(widget.shiftId);
+      final data = await appState.api.getShift(widget.shiftId);
       _shift = data;
       _bindControllersFromShift();
     } catch (e) {
@@ -123,8 +125,8 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
     final appState = context.read<AppState>();
     final t = AppLocalizations.of(context)!;
 
-    try {
       Map<String, dynamic> payload = {};
+    try {
       if (unit == 'blow') {
         payload = {
           'preforms_per_carton': _intOrNull(_blow['preforms_per_carton']!.text) ?? 1248,
@@ -190,7 +192,7 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
         };
       }
 
-      final updated = await appState.db.updateUnit(widget.shiftId, unit, payload);
+      final updated = await appState.api.updateUnit(widget.shiftId, unit, payload);
       setState(() {
         _shift = updated;
       });
@@ -199,16 +201,39 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.save)));
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      // Offline fallback — queue the unit update for replay when back online
+      try {
+        await SyncService.instance.enqueueShiftUnitUpdate(
+          shiftId: widget.shiftId,
+          unit: unit,
+          payload: payload,
+        );
+        if (!mounted) return;
+        final t2 = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(t2.savedOffline),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } catch (e2) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 
   Future<void> _submit() async {
     final appState = context.read<AppState>();
     final t = AppLocalizations.of(context)!;
+    if (!SyncService.instance.isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.submitRequiresConnection), backgroundColor: Colors.orange),
+      );
+      return;
+    }
     try {
-      final updated = await appState.db.submitShift(widget.shiftId);
+      final updated = await appState.api.submitShift(widget.shiftId);
       setState(() => _shift = updated);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.submit)));
@@ -221,8 +246,14 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
   Future<void> _approve() async {
     final appState = context.read<AppState>();
     final t = AppLocalizations.of(context)!;
+    if (!SyncService.instance.isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.approveRequiresConnection), backgroundColor: Colors.orange),
+      );
+      return;
+    }
     try {
-      final updated = await appState.db.approveShift(widget.shiftId);
+      final updated = await appState.api.approveShift(widget.shiftId);
       setState(() => _shift = updated);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.approve)));
@@ -235,8 +266,14 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
   Future<void> _lock() async {
     final appState = context.read<AppState>();
     final t = AppLocalizations.of(context)!;
+    if (!SyncService.instance.isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.lockRequiresConnection), backgroundColor: Colors.orange),
+      );
+      return;
+    }
     try {
-      final updated = await appState.db.lockShift(widget.shiftId);
+      final updated = await appState.api.lockShift(widget.shiftId);
       setState(() => _shift = updated);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.lock)));
@@ -286,17 +323,22 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
             },
             itemBuilder: (_) => [
               PopupMenuItem(value: 'refresh', child: Text(t.refresh)),
-              PopupMenuItem(value: 'submit', child: Text(t.submit)),
-              if (appState.hasRole('supervisor') || appState.hasRole('admin'))
+              if (appState.canEnterShifts)
+                PopupMenuItem(value: 'submit', child: Text(t.submit)),
+              if (appState.canApproveShifts)
                 PopupMenuItem(value: 'approve', child: Text(t.approve)),
-              if (appState.hasRole('supervisor') || appState.hasRole('admin'))
+              if (appState.canApproveShifts)
                 PopupMenuItem(value: 'lock', child: Text(t.lock)),
             ],
           ),
         ],
       ),
-      body: TabBarView(
-        controller: _tab,
+      body: Column(
+        children: [
+          const SyncStatusBar(),
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
         children: [
           _unitForm(
             title: t.unitBlow,
@@ -380,6 +422,9 @@ class _ShiftDetailScreenState extends State<ShiftDetailScreen> with SingleTicker
           _summaryTab(shift),
         ],
       ),
+    ),
+  ],
+),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(12),
         child: Text('${t.status}: $status', textAlign: TextAlign.center),

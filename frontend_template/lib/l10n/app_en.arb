@@ -66,37 +66,112 @@
   "quantity": "Quantity",
   "transactionType": "Transaction type",
   "noPendingApprovals": "No pending approvals",
-  "oneDrive": "OneDrive",
-  "oneDriveSync": "OneDrive Sync",
-  "connectOneDrive": "Connect OneDrive",
-  "syncAll": "Sync All",
-  "exportShifts": "Export Shifts",
-  "exportInventory": "Export Inventory",
-  "backupDatabase": "Backup Database",
-  "connected": "Connected",
-  "notConnected": "Not Connected",
   "rawWarehouse": "Raw Materials Warehouse",
   "fgWarehouse": "Finished Goods Warehouse",
   "fuelWarehouse": "Fuel Warehouse",
   "productionHall": "Production Hall",
-  "accountant": "Warehouse Accountant",
-  "controller": "Accounts Controller",
-  "generalManager": "General Manager",
-  "accountAuditor": "Account Auditor",
-  "receiveItems": "Receive Items",
-  "transferItems": "Transfer Items",
-  "fuelLog": "Fuel Log",
-  "issueInvoice": "Issue Invoice",
-  "pendingItems": "Pending",
-  "confirmedItems": "Confirmed",
-  "postedItems": "Posted",
-  "confirmReceive": "Confirm Receive",
-  "postEntry": "Post",
-  "approveEntry": "Approve",
-  "generator1Fuel": "Generator 1 Fuel",
-  "generator2Fuel": "Generator 2 Fuel",
-  "receivedFuel": "Received Fuel",
-  "totalIssued": "Total Issued",
-  "invoiceNo": "Invoice No.",
-  "customer": "Customer"
+  "receiveGoods": "Receive goods",
+  "transferToProduction": "Transfer to Production",
+  "transferToFG": "Transfer to Finished Goods",
+  "issueGoods": "Issue goods",
+  "receiveFinished": "Receive finished goods",
+  "issueFuel": "Issue fuel",
+  "receiveFuel": "Receive fuel",
+  "generator": "Generator",
+  "pendingTransactions": "Pending transactions",
+  "acknowledgedTransactions": "Acknowledged transactions",
+  "postedTransactions": "Posted transactions",
+  "acknowledge": "Acknowledge",
+  "post": "Post",
+  "accountantDashboard": "Warehouse Accountant",
+  "controllerDashboard": "Accounts Controller",
+  "managerDashboard": "General Manager",
+  "auditorDashboard": "Auditor",
+  "allOperations": "All Operations",
+  "sourceWarehouse": "Source warehouse",
+  "targetWarehouse": "Target warehouse",
+  "transferQty": "Transfer qty",
+  "invoiceRef": "Invoice ref.",
+  "txnPending": "Pending",
+  "txnAcknowledged": "Acknowledged",
+  "txnPosted": "Posted",
+  "noTransactions": "No transactions",
+  "confirmAcknowledge": "Confirm acknowledgement?",
+  "confirmPost": "Post this transaction?",
+  "yes": "Yes",
+  "no": "No",
+  "error": "Error",
+  "success": "Operation successful",
+  "loading": "Loading...",
+  "date": "Date",
+  "type": "Type",
+  "myWarehouse": "My Warehouse",
+  "allWarehouses": "All Warehouses",
+  "shiftReports": "Shift Reports",
+  "warehouseMovements": "Warehouse Movements",
+  "productionSupervisorDashboard": "Production Supervisor",
+  "receiveFromRM": "Receive from Raw Materials",
+  "shiftCreateButton": "Create new shift",
+  "shiftDate": "Shift date",
+  "shiftCodeLabel": "Shift code",
+  "stockReport": "Stock report",
+  "allTransactions": "All transactions",
+  "transferPair": "Transfer movement",
+  "receiveTitle": "Receive",
+  "issueTitle": "Issue",
+  "syncOffline": "Offline",
+  "syncSyncing": "Syncing…",
+  "syncUpToDate": "Up to date",
+  "syncPendingCount": "{count} pending",
+  "@syncPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncJustNow": "Just now",
+  "syncMinutesAgo": "{n} min ago",
+  "@syncMinutesAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "syncHoursAgo": "{n}h ago",
+  "@syncHoursAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "syncNow": "Sync now",
+  "syncError": "Sync error",
+  "savedOffline": "Saved offline — will sync when connected",
+  "noData": "No data",
+  "syncConflictTitle": "Sync Conflicts",
+  "syncConflictSubtitle": "{count} item(s) could not be synced",
+  "syncConflictResolved": "All conflicts resolved",
+  "syncConflictUnknownError": "Unknown error",
+  "syncConflictRetry": "Retry",
+  "syncConflictDiscard": "Discard",
+  "close": "Close",
+  "dateFrom": "From date",
+  "dateTo": "To date",
+  "filterByDate": "Filter by date",
+  "clearFilter": "Clear filter",
+  "syncShiftPending": "{count} shift unit update(s) queued offline",
+  "@syncShiftPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "submitRequiresConnection": "Cannot submit shift while offline",
+  "approveRequiresConnection": "Cannot approve shift while offline",
+  "lockRequiresConnection": "Cannot lock shift while offline",
+  "offlineCachedData": "Showing cached data — connect to refresh"
 }
