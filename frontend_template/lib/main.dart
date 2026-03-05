@@ -15,15 +15,30 @@ import 'screens/home_screen.dart';
 /// Global navigator key – required by PushNotifications for in-app navigation.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Whether Firebase was successfully initialized.
+bool _firebaseReady = false;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Firebase initialisation ──────────────────────────────────────────────
-  await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  // ── Firebase initialisation (graceful — app works without it) ────────────
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    _firebaseReady = true;
+  } catch (e) {
+    // Firebase not configured (placeholder google-services.json).
+    // Push notifications will be disabled; all other features work normally.
+    debugPrint('[Firebase] Skipping Firebase init: $e');
+    _firebaseReady = false;
+  }
 
   // ── Background sync engine (WorkManager) ────────────────────────────────
-  await BackgroundSync.initialize();
+  try {
+    await BackgroundSync.initialize();
+  } catch (e) {
+    debugPrint('[BackgroundSync] Init skipped: $e');
+  }
 
   runApp(
     MultiProvider(
@@ -43,8 +58,8 @@ class ProductionReportApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
 
-    // Wire push notifications once the user is logged in and navigator is ready.
-    if (appState.isLoggedIn) {
+    // Wire push notifications only if Firebase is ready and user is logged in.
+    if (_firebaseReady && appState.isLoggedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         PushNotifications.initialize(
           serverUrl: appState.serverUrl,
